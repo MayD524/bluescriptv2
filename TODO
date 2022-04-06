@@ -1,0 +1,28 @@
+Todo:
+    - alloc 
+    - logic
+    - stdlib
+    - IO - stdout; stdin
+        - [done] print 
+        - input
+    - allow generic syscalls
+    - better errors
+    - function returns and params
+    - scope
+    - recursion
+
+Maybe:
+    - auto gen variable names
+
+Done:
+    - print
+    - string literals
+    - blocking
+    - calling functions
+    - int's in .bss and not .data (init through code)
+    - basic math
+        - [done] add
+        - [done] subtract
+        - [done] divide
+        - [done] multiply
+    - constants
