@@ -1,0 +1,5 @@
+
+block strcmp str str -> int
+    str1 str2
+    
+end

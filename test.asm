@@ -3,49 +3,55 @@ global _start: ; the start we expect
 
 
 section .text
-test:
-mov [a], rax
-mov [b], rbx
-mov [c], rcx
+recursionTest:
+mov [recursionTest_x], rax
+mov [recursionTest_r], rbx
 
-mov rax, [a]
+mov rax, [recursionTest_x]
 push rax
-add rax, [b]
-mov [a], rax
+add rax, [recursionTest_r]
+mov [recursionTest_x], rax
 pop rax
 
+mov rax, [recursionTest_x]
+mov rdx, 5
+cmp rax, rdx
+jle bs_logic_end2
+
+mov rax, [recursionTest_x] ; return value in rax
+ret
+
+bs_logic_end2:
+
+mov rax, [recursionTest_x]
 push rax
-push rbx
-
-mov rax, [a]
-
-mov rbx, [c]
-mul rbx
-
-mov [a], rax
-pop rbx
+mov rax, [recursionTest_r]
+push rax
+mov rax, [recursionTest_a]
+push rax
+mov rax, [recursionTest_x] ; 3
+mov rbx, [recursionTest_r] ; 3
+call recursionTest ; 3
+mov rbx, rax
 pop rax
+mov [recursionTest_a], rax
+pop rax
+mov [recursionTest_r], rax
+pop rax
+mov [recursionTest_x], rax
+mov rax, rbx
+mov [recursionTest_a], rax
 
-
-mov rax, [a]
-call bluescript2_numeric_print
-
-lea rax, [a] ; 0
-lea rbx, [b] ; 0
-lea rcx, [c] ; 0
-call test ; 0
-
-mov rax, 1 ; return value in rax
+mov rax, [recursionTest_a] ; return value in rax
 ret
 
 _start:
-mov rax, 1 ; 3
+mov rax, 0 ; 3
 mov rbx, 2 ; 3
-mov rcx, 3 ; 3
-call test ; 3
-mov [hello], rax
+call recursionTest ; 3
+mov [main_r], rax
 
-mov rax, [hello]
+mov rax, [main_r]
 call bluescript2_numeric_print
 
 mov rax, 60
@@ -55,15 +61,21 @@ syscall
 ret
 
 
-section .rodata
-km db 10
-
 section .bss
 ;--- for printing numbers ---
 digitSpace resb 100
 digitSpacePos resb 8
+;--- recursion ---
+recursiveStack resw 100
+;--- other ---
 
-a resw 4 ; stores 64-bit int
-b resw 4 ; stores 64-bit int
-c resw 4 ; stores 64-bit int
-hello resw 4 ; stores 64-bit int
+recursionTest_x resw 4 ; stores 64-bit int
+recursionTest_r resw 4 ; stores 64-bit int
+recursionTest_a resw 4 ; stores 64-bit int
+main_r resw 4 ; stores 64-bit int
+
+section .data
+;--- for recursion ---
+recursiveDepth db 0
+;--- other ---
+

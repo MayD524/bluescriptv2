@@ -3,12 +3,12 @@ bluescript2_generic_print:
     push rax
     mov  rbx, 0
 
-    print_loop:
+    .print_loop:
         inc rax
         inc rbx
         mov cl, [rax]
         cmp cl, 0
-        jne print_loop
+        jne .print_loop
         
         mov rax, 1
         mov rdi, 1
@@ -27,7 +27,7 @@ bluescript2_numeric_print:
     inc rcx
     mov [digitSpacePos], rcx
 
-    _printLoop: 
+    ._printLoop: 
         mov rdx, 0  ; stops rdx from being concatenated
         mov rbx, 10
         div rbx
@@ -41,9 +41,9 @@ bluescript2_numeric_print:
 
         pop rax
         cmp rax, 0
-        jne _printLoop
+        jne ._printLoop
 
-    _printLoop2:
+    ._printLoop2:
         ; print the number in reverse
         mov rcx, [digitSpacePos]
         
@@ -61,7 +61,7 @@ bluescript2_numeric_print:
 
         ; check if we are at the end
         cmp rcx, digitSpace
-        jge _printLoop2
+        jge ._printLoop2
     ret
 
 bluescript2_string_copy:
@@ -69,14 +69,45 @@ bluescript2_string_copy:
     ; destination in rdi
     ; copy till null byte
 
-    _copyLoop:
+    ._copyLoop:
         mov cl, [rax]
         cmp cl, 0
-        je _copyLoopEnd
+        je ._copyLoopEnd
         mov [rdi], cl
         inc rdi
         inc rax
-        jmp _copyLoop
+        jmp ._copyLoop
     
-    _copyLoopEnd:
+    ._copyLoopEnd:
     ret
+
+bluescript2_string_cmp:
+    ; string in rax
+    ; string to compare with in rdi
+    ; returns 0 if equal, 1 if not equal
+    ._cmpLoop:
+        mov cl, [rax]
+        mov dl, [rdi]
+        cmp cl, dl
+        jne .notEqual
+        inc rax
+        inc rdi
+        jmp ._cmpLoop
+    
+    .areEqual:
+        mov rax, 0
+        ret
+
+    .notEqual:
+        mov rax, 1
+        ret
+
+
+bluescript2_mayloc:
+    ; -- malloc memory -- 
+    ; TODO: add malloc functionality
+    ; size in rax
+    ; return address in rdi
+    .error:
+        mov rax, 1 ; -- non-zero means malloc failed
+        ret

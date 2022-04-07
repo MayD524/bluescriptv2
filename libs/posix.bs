@@ -1,0 +1,19 @@
+#*
+    This is a standard library for BlueScript 2.0
+    this library is designed to be used for posix
+    based commands
+*#
+
+block name void -> str 
+    os_name = "posix"
+    return os_name
+end
+
+block syscall2 int int -> int
+    ## Used to make a syscall to the operating system
+    ## (linux)
+    rax rbi
+    asm "mov rax, "
+    asm rax
+    return 0
+end

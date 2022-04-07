@@ -19,39 +19,41 @@ BS_TOKEN_TYPES = [
 ]
 
 BS_GENERIC_FUNCTIONS = [
-    "print",        ## string
-    "iprint",       ## int
+    "print"
 ]
 
 BS_KEY_TOKENS = {
-    "if"   : 0,
-    "else" : 1,
-    "int"  : 2,
-    "void" : 3,
-    "null" : 4,
-    "char" : 5,
-    "float": 6,
+    "if"    : 0,
+    "else"  : 1,
+    "int"   : 2,
+    "void"  : 3,
+    "null"  : 4,
+    "char"  : 5,
+    "float" : 6,
     "return": 7,
     
-    "*" : 8,
-    "-" : 9,
-    "+" : 10,
-    "/" : 11,
-    "=" : 12,
-    "|" : 13,
+    "++"    : 23,
+    "--"    : 24,
+    "*"     : 8,
+    "-"     : 9,
+    "+"     : 10,
+    "/"     : 11,
+    "="     : 12,
+    "|"     : 13,
     
-    "<" : 14,
-    ">" : 15,
-    ">=" : 16,
-    "<=" : 17,
+    "<"     : 14,
+    ">"     : 15,
+    ">="    : 16,
+    "<="    : 17,
+    "=="    : 18,
+    "!="    : 19,
     
-    "&&" : 18,
-    "||" : 19,
-    "! " : 20,
+    "&&"    : 19,
+    "||"    : 20,
+    "! "    : 21,
     
-    "EOL": 21,
-    ";"  : 21,
-    "EOF": 22
+    "asm"   : 25,
+    ";"     : 26,
 }
 
 BS_COMMENT_CHAR = "#"
@@ -79,8 +81,25 @@ class parser:
         self.variables      : dict[str, list[str]] = {}
         self.constantValues : dict[str, list[str]] = {}
         self.livingFunctions: list[str] = []
-        
+    
+    def handleIncludes(self) -> None:
+        ## find any line that starts with #include
+        for line_no, line in enumerate(self.combined_data):
+            if line.startswith("#include"):
+                ## get the file name
+                fileName = line.split(" ", 1)[1].strip()
+                ## get the file data
+                fileData = open(fileName, "r").readlines()
+                ## add the file data to the combined data
+                self.combined_data.extend(fileData)
+                ## remove the line that included the file
+                self.combined_data.pop(line_no)
+                ## recursively call this function on the new data
+                self.handleIncludes()
+                break
+
     def pre_parse(self) -> None:
+        self.handleIncludes()
         inMultiLineComment = False
         
         ## remove single line comments
@@ -132,6 +151,7 @@ class parser:
                 "args": args,
                 "argc": argc,
                 "retType": retType.strip(),
+                "local_variables": [],
                 "lines": self.combined_data[lineNo+1:lineNo+next_end],
                 "lineRange": (lineNo, lineNo+next_end)
             }
@@ -146,7 +166,7 @@ class parser:
         
         self.tokenizeBlocks()
     
-    def typeOf(self, token:str) -> str:
+    def typeOf(self, token:str, blockName:str) -> str:
         if token in BS_KEY_TOKENS:
             return "keyword"
         
@@ -154,8 +174,8 @@ class parser:
             return "int"
         
         ## check if it's a variable
-        elif token in self.variables:
-            return self.variables[token][0]
+        elif f"{blockName}_{token}" in self.variables:
+            return self.variables[f"{blockName}_{token}"][0]
         
         elif token in self.constantValues:
             return self.constantValues[token][0]
@@ -221,7 +241,12 @@ class parser:
                         else:
                             tokens.insert(token_no, "BS_VARIABLE_TOKEN")
                             if token not in self.constantValues:
-                                self.variables[token] = [self.typeOf(token), "unknown"]
+                                ## scope 
+                                self.variables[f"{blockName}_{token}"] = [self.typeOf(token, blockName), "unknown"]
+                                ## replace token with the variable name
+                                tokens[token_no+1] = f"{blockName}_{token}"
+                                if f"{blockName}_{token}" not in self.blocks[blockName]["local_variables"]:
+                                    self.blocks[blockName]["local_variables"].append(f"{blockName}_{token}")
                             skip = True
                     ## split tokens by token types
                     

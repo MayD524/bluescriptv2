@@ -1,4 +1,4 @@
-from pprint import pprint
+from pprint import isrecursive, pprint
 import os
 
 
@@ -48,6 +48,15 @@ elif name == "posix":
     
     pass
 
+JMP_MODES = {
+    14 : "jl",
+    15 : "jg",
+    16 : "jge",
+    17 : "jle",
+    18 : "je",
+    19 : "jne"
+}
+
 REGISTERS = [
     "rax",
     "rbx",
@@ -75,9 +84,15 @@ class compiler:
             ".text":   [],  ## code
             ".rodata": [],  ## read-only data
             ".bss":    [
-                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n"],  ## uninitialized data
-            ".data":   []   ## initialized data
+                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- recursion ---\nrecursiveStack resw 100\n;--- other ---\n"],  ## uninitialized data
+            ".data":   [
+                ";--- for recursion ---\nrecursiveDepth db 0\n;--- other ---\n",
+            ]   ## initialized data
         }
+        
+        ## for logic control (so we can do our checks)
+        self.inLogicDecl:bool          = False
+        self.logicEndLabel:str|None    = None
         
         self.totalMemory = 0
     
@@ -135,6 +150,11 @@ class compiler:
             raise Exception(f"variable '{value}' is not an integer, but a {self.typeOf(value)}")
     
     def compile_blockLine(self, name:str, line:list[str]) -> bool:
+        if line[0] != 13 and self.inLogicDecl:
+            self.inLogicDecl = False
+            self.compiledASM[".text"].append(f"{self.logicEndLabel}:\n")
+        elif line[0] == 13:
+            line = line[1:]
         hasReturned     = False
         needReturnValue = False ## for declaring variables that require a return value
         returnVarName   = ""
@@ -144,14 +164,15 @@ class compiler:
             token = line[token_no]
             if token == "BS_STRING_TOKEN_AHOY":
                 self.allocStr(line[token_no+1])
-        
+
             elif token == "BS_VARIABLE_TOKEN":
                 varName = line[token_no+1]
                 
                 if len(line) > token_no+2:
                     incToken = 3
-                    mode    = line[token_no+2]
-                    dType   = line[token_no+3]
+                    mode     = line[token_no+2]
+                    dType    = line[token_no+3]
+                    print(dType)
                     if dType == "BS_FUNCTION_TOKEN" or dType == "BS_GENERIC_FUNCTION_TOKEN":
                         ## call a function and store the result in a variable
                         needReturnValue = True
@@ -162,25 +183,30 @@ class compiler:
                         continue
                     value = "NULL"
                     if len(line) > token_no+4:
-                        value   = line[token_no + 4]
+                        value    = line[token_no + 4]
                         incToken = 4
                     token_no += incToken
                     match mode:
                         case 12: ## assign
                             if dType != "BS_STRING_TOKEN_AHOY":
                                 size = 4 ## default store a 32bit value 
-                                self.package["variables"][varName] = [self.typeOf(value), value]
+                                self.package["variables"][varName] = [self.typeOf(value), value, False] if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName]
                                 if self.isVariable(value):
                                     value = f"[{value}]"
                                 if '[' in varName and ']' in varName:
                                     varName, size = varName.split('[')
                                     size = int(size.replace(']',''))
-                                self.compiledASM[".bss"].append(f"{varName} resw {size}")
+                                if not self.package["variables"][varName][2]:
+                                    self.compiledASM[".bss"].append(f"{varName} resw {size}")
                                 self.compiledASM[".text"].append(f"push rax\nmov rax, {value}\nmov [{varName}], rax\npop rax")
+                                self.package["variables"][varName][2] = True ## the variable has been declared
                             else:
+                                self.package["variables"][varName] = [self.typeOf(value), value, False]
                                 self.compiledASM[".text"].append(f"push rax\nmov rax, bs_str{self.global_token_id}\nmov [{varName}], rax\npop rax")
-                                self.allocSpace(varName, "str", len(value) + 1)
+                                if not self.package["variables"][varName][2]:
+                                    self.allocSpace(varName, "str", len(value) + 1)
                                 self.allocStr(value)
+                                self.package["variables"][varName][2] = True if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName] ## the variable has been declared
                                 
                         case 10: ## add
                             print(f"add = {varName} {mode} {dType} {value}")
@@ -224,21 +250,32 @@ class compiler:
                 loc_args = line[token_no+2:]
                 #loc_args = [x for x in loc_args if x not in ["BS_STRING_TOKEN_AHOY", "BS_VARIABLE_TOKEN", "BS_INT_TOKEN", "BS_FLOAT_TOKEN", "BS_FUNCTION_TOKEN", "BS_GENERIC_FUNCTION_TOKEN"]]
                 loc_argc = len(loc_args)
-                print(f"loc_args: {loc_args}")
                 if nextFun not in self.package["livingFunctions"]:
                     raise Exception(f"function {nextFun} not found")
                 
                 functionData = self.package["blocks"][nextFun]
+                isrecursive = nextFun == name
+                
+                if isrecursive:
+                    ## move all local variables to the stack
+                    for var in functionData["local_variables"]:
+                        self.compiledASM[".text"].append(f"mov rax, [{var}]")
+                        self.compiledASM[".text"].append(f"push rax")
                 
                 if functionData["args"][0] == "void":
                     self.compiledASM[".text"].append(f"call {nextFun} ; {token_no}")
+                    if isrecursive:
+                        self.compiledASM[".text"].append(f"mov rbx, rax")
+                        for var in functionData["local_variables"][::-1]:
+                            self.compiledASM[".text"].append(f"pop rax")
+                            self.compiledASM[".text"].append(f"mov [{var}], rax")
+                        self.compiledASM[".text"].append(f"mov rax, rbx")
                     if needReturnValue:
                         self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                         returnVarName   = ""
                         needReturnValue = False
                     break
-                
-                if functionData["argc"] * 2 != loc_argc:
+                if functionData["argc"] != loc_argc // 2:
                     raise Exception(f"function {nextFun} takes {functionData['argc']} arguments, but {loc_argc} were given")
                 ## check if all arguments are of the same type
                 regIndex = 0
@@ -246,28 +283,31 @@ class compiler:
                 while arg_ptr < loc_argc:
                     argType  = loc_args[arg_ptr]
                     argValue = loc_args[arg_ptr+1]
-                    print(f"{argType} {argValue}")
-                    print(self.typeOf(argValue))
                     if self.typeOf(argValue) != functionData["args"][arg_ptr-arg_ptr//2]:
                         raise Exception(f"function {nextFun} takes {functionData['args'][arg_ptr-arg_ptr//2]} as argument {arg_ptr}, but {self.typeOf(loc_args[arg_ptr])} was given")
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         self.compiledASM[".data"].append(f"bs_str{self.global_token_id}: db \"{argValue}\", 0xa")
-                        self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [bs_str{self.global_token_id}] ; {token_no}")
+                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [bs_str{self.global_token_id}] ; {token_no}")
                     elif argType == "BS_VARIABLE_TOKEN": ## TODO: Check if variable is string or int
-                        ## if its an int use lea else mov
-                        self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [{argValue}] ; {token_no}")
+                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{argValue}] ; {token_no}")
                     elif argType == "BS_INT_TOKEN":
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {argValue} ; {token_no}")
                     arg_ptr  += 2
                     regIndex += 1
                 self.compiledASM[".text"].append(f"call {nextFun} ; {token_no}")
 
+                if isrecursive:
+                    self.compiledASM[".text"].append(f"mov rbx, rax")
+                    for var in functionData["local_variables"][::-1]:
+                        self.compiledASM[".text"].append(f"pop rax")
+                        self.compiledASM[".text"].append(f"mov [{var}], rax")
+                    self.compiledASM[".text"].append(f"mov rax, rbx")
                 if needReturnValue:
                     self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                     needReturnValue = False
                     returnVarName   = ""
-
+                break
             elif token == "BS_GENERIC_FUNCTION_TOKEN":
                 funcName = line[token_no+1]
                 if funcName == "print":
@@ -278,8 +318,10 @@ class compiler:
                     elif line[token_no+2] == "BS_INT_TOKEN":
                         self.compiledASM[".text"].append(f"mov rax, {line[token_no+3]}")
                     elif line[token_no+2] == "BS_VARIABLE_TOKEN":
-                        if line[token_no+3] in self.package["variables"] or line[token_no+3] in self.package["constants"]:
+                        if line[token_no+3] in self.package["variables"]:
                             self.compiledASM[".text"].append(f"mov rax, [{line[token_no+3]}]")
+                        elif line[token_no+3] in self.package["constants"]:
+                            self.compiledASM[".text"].append(f"lea rax, [{line[token_no+3]}]")
                         else:
                             raise Exception("Unknown variable")
                     incBy = 0
@@ -296,6 +338,54 @@ class compiler:
                     
             elif isinstance(token, int):
                 match token:
+                    case 0: ## if:
+                        self.logicEndLabel = f"bs_logic_end{self.global_token_id}"
+                        cmp1 = line[token_no+2]
+                        mode = line[token_no+3]
+                        cmp2 = line[token_no+5]
+                        
+                        mode += 1 if mode % 2 == 0 else -1
+                        
+                        if mode not in JMP_MODES:
+                            raise Exception(f"unknown jump mode '{mode}' (this is a compiler error sorry for lack of detail :/)")
+                        mode = JMP_MODES[mode]
+                        
+                        ## check if cmp1 is a variable or a string
+                        if self.isVariable(cmp1):
+                            cmp1 = f"[{cmp1}]"
+                        elif self.typeOf(cmp1) == "str":
+                            self.allocStr(cmp1)
+                            cmp1 = f"[bs_str{self.global_token_id}]"
+
+                        if self.isVariable(cmp2):
+                            cmp2 = f"[{cmp2}]"
+                        elif self.typeOf(cmp2) == "str":
+                            self.allocStr(cmp2)
+                            cmp2 = f"[bs_str{self.global_token_id}]"
+                        
+                        
+                        ## move cmp1 to rax and cmp2 to rdx
+                        self.compiledASM[".text"].append(f"mov rax, {cmp1}\nmov rdx, {cmp2}")
+                        self.compiledASM[".text"].append(f"cmp rax, rdx\n{mode} {self.logicEndLabel}")
+                        self.inLogicDecl   = True
+                        self.logicEndLabel = f"bs_logic_end{self.global_token_id}"
+                    ## TODO: else statements (maybe?)
+                    #case 1: ## else:
+                    #    self.logicEndLabel = f"bs_logic_end{self.global_token_id}"
+                    
+                    case 25: ## asm
+                        ## allow for loading assembly code before runtime
+                        if (token_no+2 > len(line)):
+                            raise Exception(f"asm must have a value")
+                        if not self.isVariable(line[token_no+2]):
+                            asm = line[token_no+2].replace("\n", "")
+                            self.compiledASM[".text"].append(asm)
+                        else:
+                            asm = "[{}]".format(line[token_no+2])
+                            self.compiledASM[".text"][-1] += f"{asm}"
+                        
+                        
+
                     case 7: ## return/exit
                         ## check the return type
                         if (retType := self.package["blocks"][name]["retType"]) == "void":
@@ -314,10 +404,8 @@ class compiler:
                         if name == "main":
                             self.compiledASM[".text"].append(sys_exit(retValue))
                         else:
-                            if self.typeOf(retValue) == "int" and retValue not in self.package["constants"] or retValue not in self.package["variables"]:
+                            if retValue not in self.package["constants"] or retValue not in self.package["variables"]:
                                 self.compiledASM[".text"].append(f"mov rax, {retValue if not self.isVariable(retValue) else f'[{retValue}]'} ; return value in rax")
-                            elif retValue in self.package["constants"] or retValue in self.package["variables"]:
-                                self.compiledASM[".text"].append(f"lea rax, [{retValue}]")
                             else:
                                 retValue = f"\"{retValue}\""
                                 if "\\n" in retValue:
@@ -352,8 +440,12 @@ class compiler:
                 args = self.package["blocks"][block]["tokens"][0]
                 args = [arg for arg in args if arg != "BS_VARIABLE_TOKEN"]
                 ## remove BS_VARIABLE_TOKEN from args
+                print(f"args: {args} {self.package['blocks'][block]['args']}")
+                print(f"argc: {len(args)} {self.package['blocks'][block]['argc']}")
                 if len(args) > self.package["blocks"][block]["argc"]:
                     raise Exception(f"too many arguments for {block}")
+                elif len(args) < self.package["blocks"][block]["argc"]:
+                    raise Exception(f"not enough arguments for {block}")
                 regIndex = 0
                 for i in range(len(args)):
                     arg = args[i]
@@ -385,6 +477,11 @@ class compiler:
     
     def compileConstants(self) -> None:
         for constant in self.package["constants"]:
+            self.package['constants'][constant][1] = self.package['constants'][constant][1] if not self.isVariable(self.package['constants'][constant][1]) else f"[{self.package['constants'][constant][1]}]"
+            ## check if there is a newline in the string
+            if "\\n" in self.package['constants'][constant][1]:
+                self.package['constants'][constant][1] = self.package['constants'][constant][1].replace("\\n", "")
+                self.package['constants'][constant][1] += ", 10" if self.package['constants'][constant][1] != "" else "10"
             self.compiledASM[".rodata"].append(f"{constant} db {self.package['constants'][constant][1]}")
     
     def compile(self) -> None:

@@ -1,21 +1,20 @@
 Todo:
-    - alloc 
-    - logic
+    - alloc/malloc (mayloc lol)
     - stdlib
     - IO - stdout; stdin
         - [done] print 
         - input
     - allow generic syscalls
     - better errors
-    - function returns and params
-    - scope
-    - recursion
+    
 
 Maybe:
-    - auto gen variable names
+    - fix token consistency issue
+        - use enums
 
 Done:
     - print
+    - function returns and params
     - string literals
     - blocking
     - calling functions
@@ -26,3 +25,8 @@ Done:
         - [done] divide
         - [done] multiply
     - constants
+    - logic
+        - [done] if
+    - scope
+    - recursion
+    - auto gen variable names

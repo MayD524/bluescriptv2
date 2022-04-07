@@ -1,0 +1,7 @@
+const str newLine "\n"
+
+block println str -> void
+    strToPrint
+    print strToPrint
+    print newLine
+end
