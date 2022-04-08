@@ -1,4 +1,4 @@
-from pprint import isrecursive, pprint
+from pprint import pprint
 import os
 
 
@@ -84,7 +84,7 @@ class compiler:
             ".text":   [],  ## code
             ".rodata": [],  ## read-only data
             ".bss":    [
-                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- recursion ---\nrecursiveStack resw 100\n;--- other ---\n"],  ## uninitialized data
+                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- recursion ---\nrecursiveStack resw 100\n;--- args ---\nargc resw 4\nargv resw 10\n;--- other ---\n"],  ## uninitialized data
             ".data":   [
                 ";--- for recursion ---\nrecursiveDepth db 0\n;--- other ---\n",
             ]   ## initialized data
@@ -190,7 +190,7 @@ class compiler:
                         case 12: ## assign
                             if dType != "BS_STRING_TOKEN_AHOY":
                                 size = 4 ## default store a 32bit value 
-                                self.package["variables"][varName] = [self.typeOf(value), value, False] if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName]
+                                self.package["variables"][varName] = [self.typeOf(value), value, False, size] if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName]
                                 if self.isVariable(value):
                                     value = f"[{value}]"
                                 if '[' in varName and ']' in varName:
@@ -200,14 +200,14 @@ class compiler:
                                     self.compiledASM[".bss"].append(f"{varName} resw {size}")
                                 self.compiledASM[".text"].append(f"push rax\nmov rax, {value}\nmov [{varName}], rax\npop rax")
                                 self.package["variables"][varName][2] = True ## the variable has been declared
+                                self.package["variables"][varName][3] = size
                             else:
-                                self.package["variables"][varName] = [self.typeOf(value), value, False]
+                                self.package["variables"][varName] = [self.typeOf(value), value, False, len(value)]
                                 self.compiledASM[".text"].append(f"push rax\nmov rax, bs_str{self.global_token_id}\nmov [{varName}], rax\npop rax")
                                 if not self.package["variables"][varName][2]:
                                     self.allocSpace(varName, "str", len(value) + 1)
                                 self.allocStr(value)
                                 self.package["variables"][varName][2] = True if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName] ## the variable has been declared
-                                
                         case 10: ## add
                             print(f"add = {varName} {mode} {dType} {value}")
                             self.checkVariableOperations(varName, value)
@@ -254,22 +254,9 @@ class compiler:
                     raise Exception(f"function {nextFun} not found")
                 
                 functionData = self.package["blocks"][nextFun]
-                isrecursive = nextFun == name
-                
-                if isrecursive:
-                    ## move all local variables to the stack
-                    for var in functionData["local_variables"]:
-                        self.compiledASM[".text"].append(f"mov rax, [{var}]")
-                        self.compiledASM[".text"].append(f"push rax")
                 
                 if functionData["args"][0] == "void":
                     self.compiledASM[".text"].append(f"call {nextFun} ; {token_no}")
-                    if isrecursive:
-                        self.compiledASM[".text"].append(f"mov rbx, rax")
-                        for var in functionData["local_variables"][::-1]:
-                            self.compiledASM[".text"].append(f"pop rax")
-                            self.compiledASM[".text"].append(f"mov [{var}], rax")
-                        self.compiledASM[".text"].append(f"mov rax, rbx")
                     if needReturnValue:
                         self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                         returnVarName   = ""
@@ -296,13 +283,7 @@ class compiler:
                     arg_ptr  += 2
                     regIndex += 1
                 self.compiledASM[".text"].append(f"call {nextFun} ; {token_no}")
-
-                if isrecursive:
-                    self.compiledASM[".text"].append(f"mov rbx, rax")
-                    for var in functionData["local_variables"][::-1]:
-                        self.compiledASM[".text"].append(f"pop rax")
-                        self.compiledASM[".text"].append(f"mov [{var}], rax")
-                    self.compiledASM[".text"].append(f"mov rax, rbx")
+                
                 if needReturnValue:
                     self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                     needReturnValue = False
@@ -383,8 +364,6 @@ class compiler:
                         else:
                             asm = "[{}]".format(line[token_no+2])
                             self.compiledASM[".text"][-1] += f"{asm}"
-                        
-                        
 
                     case 7: ## return/exit
                         ## check the return type
@@ -436,7 +415,10 @@ class compiler:
             if block == "main" and self.package["blocks"][block]["retType"] != "int":
                 raise Exception("main function must return int")
             
-            if self.package["blocks"][block]["args"][0] != "void":
+            if block == "main":
+                self.compiledASM[".text"].append(f"pop rax\nmov [argc], rax\npop rax\nmov [argv], rax\n")
+
+            elif self.package["blocks"][block]["args"][0] != "void":
                 args = self.package["blocks"][block]["tokens"][0]
                 args = [arg for arg in args if arg != "BS_VARIABLE_TOKEN"]
                 ## remove BS_VARIABLE_TOKEN from args
@@ -464,7 +446,6 @@ class compiler:
                     ## TODO: rework this (so we don't have string issues)
                     self.compiledASM[".text"].append(f"mov [{arg}], {REGISTERS[regIndex]}")
                     regIndex += 1
-            
             for line in self.package["blocks"][block]["tokens"]:
                 if not hasReturned:
                     hasReturned = self.compile_blockLine(block, line)

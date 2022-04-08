@@ -3,14 +3,15 @@
 block recursionTest int int -> int
     x r
     x + r
-    if x >= 5
+    print x
+    if x >= 1000
     | return x
     a = recursionTest x r
     return a
 end
 
 block main void -> int
-    r = recursionTest 0 2
+    r = recursionTest 0 1
     print r
     return 0
 end

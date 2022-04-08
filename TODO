@@ -1,11 +1,17 @@
+
 Todo:
     - alloc/malloc (mayloc lol)
+    - free
     - stdlib
     - IO - stdout; stdin
         - [done] print 
         - input
     - allow generic syscalls
     - better errors
+    - command line args
+    - file io
+    - string compair
+    - optimize assembly
     
 
 Maybe:

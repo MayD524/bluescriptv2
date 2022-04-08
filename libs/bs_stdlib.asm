@@ -1,3 +1,5 @@
+%define sys_brk 0x1000
+
 bluescript2_generic_print: 
     ; string in rax
     push rax
@@ -100,14 +102,4 @@ bluescript2_string_cmp:
 
     .notEqual:
         mov rax, 1
-        ret
-
-
-bluescript2_mayloc:
-    ; -- malloc memory -- 
-    ; TODO: add malloc functionality
-    ; size in rax
-    ; return address in rdi
-    .error:
-        mov rax, 1 ; -- non-zero means malloc failed
         ret
