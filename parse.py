@@ -242,6 +242,7 @@ class parser:
                             tokens.insert(token_no, "BS_VARIABLE_TOKEN")
                             if token not in self.constantValues:
                                 ## scope 
+                                #token = token.split('[')[0] if '[' in token else token
                                 self.variables[f"{blockName}_{token}"] = [self.typeOf(token, blockName), "unknown"]
                                 ## replace token with the variable name
                                 tokens[token_no+1] = f"{blockName}_{token}"

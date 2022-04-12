@@ -1,17 +1,13 @@
 #const int km 10
 
-block recursionTest int int -> int
-    x r
-    x + r
-    print x
-    if x >= 1000
-    | return x
-    a = recursionTest x r
-    return a
-end
-
 block main void -> int
-    r = recursionTest 0 1
-    print r
+    c = 10
+    print c
+    a[2] = 1 2
+    b = a[0]
+    b + c
+    a[0] = b
+    print a[0]
+
     return 0
 end

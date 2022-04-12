@@ -103,3 +103,9 @@ bluescript2_string_cmp:
     .notEqual:
         mov rax, 1
         ret
+
+
+bluescript2_atoi:
+    ; string in rax
+    ; returns the number
+    ; if the string is not a number, returns 0

@@ -3,57 +3,28 @@ global _start: ; the start we expect
 
 
 section .text
-recursionTest:
-mov [recursionTest_x], rax
-mov [recursionTest_r], rbx
-
-mov rax, [recursionTest_x]
-push rax
-add rax, [recursionTest_r]
-mov [recursionTest_x], rax
-pop rax
-
-mov rax, [recursionTest_x]
-call bluescript2_numeric_print
-
-mov rax, [recursionTest_x]
-mov rdx, 1000
-cmp rax, rdx
-jle bs_logic_end3
-
-mov rax, [recursionTest_x] ; return value in rax
-ret
-
-bs_logic_end3:
-
-mov rax, [recursionTest_x] ; 3
-mov rbx, [recursionTest_r] ; 3
-call recursionTest ; 3
-mov [recursionTest_a], rax
-
-mov rax, [recursionTest_a] ; return value in rax
-ret
-
 _start:
 pop rax
 mov [argc], rax
 pop rax
 mov [argv], rax
 
-mov rax, rax
+mov rax, 10
+mov [main_c], rax
 
-mov rax, 0
+mov rax, [main_c]
+call bluescript2_numeric_print
 
-mov rdi, 0
 
-div rdi
+mov rax, [main_a+0*8]
+mov [main_b], rax
 
-mov rax, 0 ; 3
-mov rbx, 1 ; 3
-call recursionTest ; 3
-mov [main_r], rax
+mov rax, [main_b]
+add rax, [main_c]
+mov [main_b], rax
 
-mov rax, [main_r]
+
+mov rax, [main_a+0*8]
 call bluescript2_numeric_print
 
 mov rax, 60
@@ -74,17 +45,13 @@ argc resw 4
 argv resw 10
 ;--- other ---
 
-recursionTest_x resw 4 ; stores 64-bit int
-recursionTest_r resw 4 ; stores 64-bit int
-recursionTest_a resw 4 ; stores 64-bit int
-main_r resw 4 ; stores 64-bit int
+main_c resw 4 ; stores 64-bit int
+main_b resw 4 ; stores 64-bit int
 
 section .data
 ;--- for recursion ---
 recursiveDepth db 0
 ;--- other ---
 
-bs_str12: db "mov rax, rax", 0
-bs_str15: db "mov rax, 0", 0
-bs_str18: db "mov rdi, 0", 0
-bs_str21: db "div rdi", 0
+main_a dq 1,2
+main_a dq main_b

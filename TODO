@@ -12,6 +12,9 @@ Todo:
     - file io
     - string compair
     - optimize assembly
+    - set value in arrays 
+        - ie. a[0] = <value> 
+            (currently does not work)
     
 
 Maybe:

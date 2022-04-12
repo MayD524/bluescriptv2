@@ -1,6 +1,8 @@
 from pprint import pprint
 import os
 
+from numpy import dtype
+
 
 IS_DEBUG = True
 
@@ -49,10 +51,10 @@ elif name == "posix":
     pass
 
 JMP_MODES = {
-    14 : "jl",
-    15 : "jg",
-    16 : "jge",
-    17 : "jle",
+    14 : "jg",
+    15 : "jle",
+    16 : "jl",
+    17 : "jge",
     18 : "je",
     19 : "jne"
 }
@@ -97,9 +99,9 @@ class compiler:
         self.totalMemory = 0
     
     def allocSpace(self, name:str, dtype:str, size:int=4) -> None:
-        if dtype == "int":
+        if dtype == "int" or dtype == "BS_INT_TOKEN":
             self.compiledASM[".bss"].append(f"{name} resw {size} ; stores {size*16}-bit int")
-        elif dtype == "str":
+        elif dtype == "str" or dtype == "BS_STRING_TOKEN_AHOY":
             self.compiledASM[".bss"].append(f"{name} resb {size} ; stores char")
 
     def typeOf(self, token:str) -> str:
@@ -149,7 +151,7 @@ class compiler:
         elif self.typeOf(value) != "int":
             raise Exception(f"variable '{value}' is not an integer, but a {self.typeOf(value)}")
     
-    def compile_blockLine(self, name:str, line:list[str]) -> bool:
+    def compile_blockLine(self, name:str, line:list[str], lineNo:int=0) -> bool:
         if line[0] != 13 and self.inLogicDecl:
             self.inLogicDecl = False
             self.compiledASM[".text"].append(f"{self.logicEndLabel}:\n")
@@ -172,7 +174,6 @@ class compiler:
                     incToken = 3
                     mode     = line[token_no+2]
                     dType    = line[token_no+3]
-                    print(dType)
                     if dType == "BS_FUNCTION_TOKEN" or dType == "BS_GENERIC_FUNCTION_TOKEN":
                         ## call a function and store the result in a variable
                         needReturnValue = True
@@ -185,64 +186,137 @@ class compiler:
                     if len(line) > token_no+4:
                         value    = line[token_no + 4]
                         incToken = 4
-                    token_no += incToken
-                    match mode:
-                        case 12: ## assign
-                            if dType != "BS_STRING_TOKEN_AHOY":
-                                size = 4 ## default store a 32bit value 
-                                self.package["variables"][varName] = [self.typeOf(value), value, False, size] if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName]
-                                if self.isVariable(value):
-                                    value = f"[{value}]"
-                                if '[' in varName and ']' in varName:
-                                    varName, size = varName.split('[')
-                                    size = int(size.replace(']',''))
-                                if not self.package["variables"][varName][2]:
-                                    self.compiledASM[".bss"].append(f"{varName} resw {size}")
-                                self.compiledASM[".text"].append(f"push rax\nmov rax, {value}\nmov [{varName}], rax\npop rax")
-                                self.package["variables"][varName][2] = True ## the variable has been declared
-                                self.package["variables"][varName][3] = size
+                    
+                    if mode == 12: ## assign
+                        size = -1
+                        if '[' in varName and ']' in varName :
+                            vardatacopy = self.package['variables'][varName]
+                            ## delete the variable
+                            del self.package['variables'][varName]
+                            varName, size = varName.split('[')
+                            size = size.replace(']', '')
+                            if not self.isVariable(size):
+                                assert size.isnumeric(), "size is not a number"
+                                size = int(size)
+                            self.package['variables'][varName] = vardatacopy
+                            self.package['variables'][varName][0] = dType
+                        if dType != "BS_STRING_TOKEN_AHOY":
+                            #pprint(self.package["variables"])
+                            vsize = -1 if '[' not in value and ']' not in value else int(value.split('[')[1].replace(']',''))
+                            if vsize != -1:
+                                value = value.split('[')[0].replace(']','')
+                            self.package["variables"][varName] = [self.typeOf(value), value, False, size] if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName]
+                            if self.isVariable(value):
+                                value = f"[{value}]" if vsize == -1 else f"[{value}+{vsize}*8]"
+                            if not self.package["variables"][varName][2]:
+                                #print("here")
+                                if size != -1: ## make an array
+                                    dt = [x for x in line[token_no+3:] if x not in ["BS_STRING_TOKEN_AHOY", "BS_VARIABLE_TOKEN", "BS_INT_TOKEN", "BS_FUNCTION_TOKEN", "BS_GENERIC_FUNCTION_TOKEN"]]
+                                    if len(dt) < size:
+                                        for i in range(size - len(dt)):
+                                            dt.append(0)
+                                    data = ','.join([str(x) for x in dt])
+                                    self.compiledASM[".data"].append(f"{varName} dq {data}")
+                                else:
+                                    print(f"{varName} dq {value}")
+                                    if vsize != -1:
+                                        if '+' in value:
+                                            dType = self.typeOf(value if '+' not in value else value.split('+')[0].replace("[", ''))
+                                        else:
+                                            dType = self.typeOf(value.replace("[", '').replace("]", ''))
+
+                                        self.compiledASM[".text"].append(f"mov rax, {value}\nmov [{varName}], rax")
+                                    else:
+                                        self.compiledASM[".text"].append(f"mov rax, {value}")
+                                        self.compiledASM[".text"].append(f'mov [{varName}], rax')
+                                    
+                                    self.allocSpace(varName, dType)
+                                    self.package["variables"][varName][0] = 'int' if dType == "BS_INT_TOKEN" else 'str'
+                                    self.package["variables"][varName][2] = True
+                                    self.package["variables"][varName][1] = value
+                                    self.package["variables"][varName][3] = size
+                                    token_no += incToken
+                                    continue
                             else:
-                                self.package["variables"][varName] = [self.typeOf(value), value, False, len(value)]
-                                self.compiledASM[".text"].append(f"push rax\nmov rax, bs_str{self.global_token_id}\nmov [{varName}], rax\npop rax")
-                                if not self.package["variables"][varName][2]:
+                                varName = f"{varName}+{size}*8"
+                                
+                            if size == -1:
+                                self.compiledASM[".text"].append(f"push rax\nmov rax, {value}\nmov [{varName}], rax\npop rax")
+                            self.package["variables"][varName][2] = True ## the variable has been declared
+                            self.package["variables"][varName][3] = size
+                            self.package["variables"][varName][0] = dType#'int' if dType == "BS_INT_TOKEN" else "str"
+                        else:
+                            self.package["variables"][varName] = [self.typeOf(value), value, False, len(value)]
+                            self.compiledASM[".text"].append(f"push rax\nlea rax, [bs_str{self.global_token_id}]; get ptr to str\nmov [{varName}], rax\npop rax")
+                            if not self.package["variables"][varName][2]:
+                                if size == -1:
                                     self.allocSpace(varName, "str", len(value) + 1)
-                                self.allocStr(value)
-                                self.package["variables"][varName][2] = True if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName] ## the variable has been declared
+                                else:
+                                    data = ','.join([str(i) for i in range(size)])
+                                    self.compiledASM[".data"].append(f"{varName} dq {data}")
+                                    self.package["variables"][varName][3] = size
+                            self.allocStr(value)
+                            self.package["variables"][varName][2] = True if len(self.package["variables"][varName]) != 3 else self.package["variables"][varName] ## the variable has been declared
+                        token_no += incToken
+                        continue ## skip the rest of the code
+                    
+                    match mode: ## for math
                         case 10: ## add
                             print(f"add = {varName} {mode} {dType} {value}")
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            if voffset != -1:
+                                varName = varName.split('[')[0]
+                            
                             self.checkVariableOperations(varName, value)
                             
                             ## we can add to a variable
-                            self.compiledASM['.text'].append(f"mov rax, [{varName}]")
+                            self.compiledASM['.text'].append(f"mov rax, [{varName}]" if voffset == -1 else f"mov rax, [{varName} + {voffset}*8]")
                             value = value if not self.isVariable(value) else f"[{value}]"
-                            self.compiledASM[".text"].append(f"push rax\nadd rax, {value}\nmov [{varName}], rax\npop rax")
+                            varName = f"[{varName}]" if voffset == -1 else f"[{varName} + {voffset}*8]"
+                            self.compiledASM[".text"].append(f"add rax, {value}\nmov {varName}, rax")
                         
                         case 8: ## mul
                             print(f"mul = {varName} {mode} {dType} {value}")
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            if voffset != -1:
+                                varName = varName.split('[')[0]
+                            
                             self.checkVariableOperations(varName, value)
                             
-                            self.compiledASM[".text"].append("push rax\npush rbx\n")
-                            ## we can multiply to a variable
-                            self.compiledASM['.text'].append(f"mov rax, [{varName}]\n")
+                            ## we can add to a variable
+                            self.compiledASM['.text'].append(f"mov rax, [{varName}]" if voffset == -1 else f"mov rax, [{varName} + {voffset}*8]")
                             value = value if not self.isVariable(value) else f"[{value}]"
+                            varName = f"[{varName}]" if voffset == -1 else f"[{varName} + {voffset}*8]"
                             self.compiledASM[".text"].append(f"mov rbx, {value}\nmul rbx\n")
-                            self.compiledASM[".text"].append(f"mov [{varName}], rax\npop rbx\npop rax\n")
+                            self.compiledASM[".text"].append(f"mov {varName}, rax")
                     
                         case 11: ## div
                             print(f"div = {varName} {mode} {dType} {value}")
-                            self.compiledASM[".text"].append("push rax\npush rcx\npush rdx\n") ## free the registers we're going to use
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            if voffset != -1:
+                                varName = varName.split('[')[0]
+                            
                             self.checkVariableOperations(varName, value)
                             
+                            ## we can add to a variable
+                            self.compiledASM['.text'].append(f"mov rax, [{varName}]" if voffset == -1 else f"mov rax, [{varName} + {voffset}*8]")
                             value = value if not self.isVariable(value) else f"[{value}]"
-                            self.compiledASM[".text"].append(f"mov rdx, 0\nmov rax, [{varName}]\nmov rcx, {value}\ndiv rcx\nmov [{varName}], rax\npop rdx\npop rcx\npop rax")
+                            varName = f"[{varName}]" if voffset == -1 else f"[{varName} + {voffset}*8]"
+                            self.compiledASM[".text"].append(f"mov rdx, 0\nmov rax, {varName}\nmov rcx, {value}\ndiv rcx\nmov {varName}, rax")
                         case 9: ## sub
                             print(f"sub = {varName} {mode} {dType} {value}")
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            if voffset != -1:
+                                varName = varName.split('[')[0]
+                            
                             self.checkVariableOperations(varName, value)
-                            self.compiledASM[".text"].append("push rax\npush rbx\n")
                             
+                            ## we can add to a variable
+                            self.compiledASM['.text'].append(f"mov rax, [{varName}]" if voffset == -1 else f"mov rax, [{varName} + {voffset}*8]")
                             value = value if not self.isVariable(value) else f"[{value}]"
-                            self.compiledASM[".text"].append(f"mov rax, [{varName}]\nmov rbx, {value}\nsub rax, rbx\nmov [{varName}], rax\npop rbx\npop rax")
-                            
+                            varName = f"[{varName}]" if voffset == -1 else f"[{varName} + {voffset}*8]"
+                            self.compiledASM[".text"].append(f"mov rax, {varName}\nmov rbx, {value}\nsub rax, rbx\nmov {varName}, rax")
+                    token_no += incToken
                 #    ## .bss gen
                 #    self.allocSpace(varName, self.typeOf(varName))
             elif token == "BS_FUNCTION_TOKEN":
@@ -275,8 +349,14 @@ class compiler:
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         self.compiledASM[".data"].append(f"bs_str{self.global_token_id}: db \"{argValue}\", 0xa")
-                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [bs_str{self.global_token_id}] ; {token_no}")
+                        self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [bs_str{self.global_token_id}] ; {token_no}")
                     elif argType == "BS_VARIABLE_TOKEN": ## TODO: Check if variable is string or int
+                        size = -1
+                        if '[' in argValue:
+                            vname, size = argValue.split('[')
+                            size = int(size.replace(']',''))
+                            self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex+1]}, [{vname}] ; {token_no}")
+                            argValue = f"{REGISTERS[regIndex+1]}+{size}" 
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{argValue}] ; {token_no}")
                     elif argType == "BS_INT_TOKEN":
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {argValue} ; {token_no}")
@@ -295,16 +375,22 @@ class compiler:
                     if len(line) < token_no+4:
                         raise Exception(f"'print' function can only take one argument")
                     if line[token_no+2] =="BS_STRING_TOKEN_AHOY":
-                        self.compiledASM[".text"].append(f"mov rax, bs_str{self.global_token_id+2}")
+                        self.compiledASM[".text"].append(f"lea rax, [bs_str{self.global_token_id+2}]")
                     elif line[token_no+2] == "BS_INT_TOKEN":
                         self.compiledASM[".text"].append(f"mov rax, {line[token_no+3]}")
                     elif line[token_no+2] == "BS_VARIABLE_TOKEN":
-                        if line[token_no+3] in self.package["variables"]:
-                            self.compiledASM[".text"].append(f"mov rax, [{line[token_no+3]}]")
-                        elif line[token_no+3] in self.package["constants"]:
-                            self.compiledASM[".text"].append(f"lea rax, [{line[token_no+3]}]")
+                        vname = line[token_no+3]
+                        if vname in self.package["variables"] or vname.split('[')[0] in self.package["variables"]:
+                            if '[' in vname:
+                                vname, size = vname.split('[')
+                                line[token_no+3] = vname
+                                size = int(size.replace(']',''))
+                                vname = f"{vname}+{size}*8"
+                            self.compiledASM[".text"].append(f"mov rax, [{vname}]")
+                        elif vname in self.package["constants"]:
+                            self.compiledASM[".text"].append(f"lea rax, [{vname}]")
                         else:
-                            raise Exception("Unknown variable")
+                            raise Exception(f"{name}:{lineNo} Unknown variable '{vname}'")
                     incBy = 0
                     ## change to variable so we don't have to mess with types later
                     if line[token_no+2] == "BS_VARIABLE_TOKEN":
@@ -437,7 +523,8 @@ class compiler:
                         arg, size = arg.split("[")
                         size = size.replace("]", "")
                         if size.isnumeric():
-                            self.allocSpace(arg, dtype, int(size))
+                            data = ','.join([i for i in range(int(size))])
+                            self.compiledASM[".data"].append(f"{arg} dw {data}")
                         else:
                             raise Exception(f"size of '{size}' is not a number")
                     else:
@@ -446,9 +533,9 @@ class compiler:
                     ## TODO: rework this (so we don't have string issues)
                     self.compiledASM[".text"].append(f"mov [{arg}], {REGISTERS[regIndex]}")
                     regIndex += 1
-            for line in self.package["blocks"][block]["tokens"]:
+            for line_no, line in enumerate(self.package["blocks"][block]["tokens"]):
                 if not hasReturned:
-                    hasReturned = self.compile_blockLine(block, line)
+                    hasReturned = self.compile_blockLine(block, line, line_no)
                     continue
                 self.compile_blockLine(block, line)
             if requireReturn and not hasReturned:
