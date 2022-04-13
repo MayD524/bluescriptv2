@@ -80,6 +80,7 @@ class parser:
         """
         self.variables      : dict[str, list[str]] = {}
         self.constantValues : dict[str, list[str]] = {}
+        self.headers        : list[str] = []
         self.livingFunctions: list[str] = []
     
     def handleIncludes(self) -> None:
@@ -97,6 +98,20 @@ class parser:
                 ## recursively call this function on the new data
                 self.handleIncludes()
                 break
+            ## allow for using assembly includes
+            elif line.startswith("#use"):
+                filename = line.split(" ", 1)[1].strip()
+                self.included_files.append(filename)
+
+                ## get the function names
+                functionNames = open(filename, "r").readlines()
+                
+                for line in functionNames:
+                    if line.startswith(";"):
+                        continue
+                    elif ":" in line and not "." in line:
+                        
+                        self.livingFunctions.append(line.strip().replace(":", ""))
 
     def pre_parse(self) -> None:
         self.handleIncludes()

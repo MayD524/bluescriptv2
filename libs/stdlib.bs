@@ -1,3 +1,4 @@
+#use libs/bs_stdlib.asm
 const str newLine "\n"
 
 block println str -> void

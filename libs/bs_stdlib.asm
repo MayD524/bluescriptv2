@@ -104,6 +104,13 @@ bluescript2_string_cmp:
         mov rax, 1
         ret
 
+bluescript2_generic_input:
+    ; rsi = buffer        
+    ; rdx = buffer size   
+    mov rax, 0            
+    mov rdi, 0              
+    syscall               
+    ret                   
 
 bluescript2_atoi:
     ; string in rax

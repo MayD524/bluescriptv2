@@ -77,7 +77,8 @@ REGISTERS = [
 ]
 
 class compiler:
-    def __init__(self, packagedData:dict[str, dict]) -> None:
+    def __init__(self, packagedData:dict[str, dict], outFile:str="test.asm") -> None:
+        self.outFile = outFile
         self.package = packagedData
         self.filePtr = 0
         self.global_token_id = 0
@@ -108,7 +109,7 @@ class compiler:
         if token in self.package["constants"]:
             return self.package["constants"][token][0]
         elif token in self.package["variables"]:
-            return self.package["variables"][token][0]
+            return "int" if self.package["variables"][token][0] == "BS_INT_TOKEN" or self.package["variables"][token][0] == "int" else "str"
         elif token.isnumeric():
             return "int"
         elif "." in token and token.replace(".", "").isnumeric():
@@ -146,7 +147,7 @@ class compiler:
             raise Exception(f"variable {varName} not found")
         elif varName in self.package["constants"]:
             raise Exception(f"variable {varName} is constant")
-        elif self.package["variables"][varName][0] != "int":
+        elif self.package["variables"][varName][0] != "int" and self.package["variables"][varName][0] != "BS_INT_TOKEN":
             raise Exception(f"variable {varName} is not an integer, but a {self.package['variables'][varName][0]}")
         elif self.typeOf(value) != "int":
             raise Exception(f"variable '{value}' is not an integer, but a {self.typeOf(value)}")
@@ -263,12 +264,16 @@ class compiler:
                     match mode: ## for math
                         case 10: ## add
                             print(f"add = {varName} {mode} {dType} {value}")
-                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']','')) if varName.split('[')[1].replace(']','').isnumeric() else f"{name}_{varName.split('[')[1].replace(']','')}"
                             if voffset != -1:
                                 varName = varName.split('[')[0]
-                            
+
+                            if isinstance(voffset, str):
+                                self.compiledASM[".text"].append(f"mov rcx, [{voffset}]")
+                                voffset = "rcx"
+
                             self.checkVariableOperations(varName, value)
-                            
+
                             ## we can add to a variable
                             self.compiledASM['.text'].append(f"mov rax, [{varName}]" if voffset == -1 else f"mov rax, [{varName} + {voffset}*8]")
                             value = value if not self.isVariable(value) else f"[{value}]"
@@ -277,9 +282,15 @@ class compiler:
                         
                         case 8: ## mul
                             print(f"mul = {varName} {mode} {dType} {value}")
-                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']','')) if varName.split('[')[1].replace(']','').isnumeric() else f"{name}_{varName.split('[')[1].replace(']','')}"
                             if voffset != -1:
                                 varName = varName.split('[')[0]
+
+                            if isinstance(voffset, str):
+                                self.compiledASM[".text"].append(f"mov rcx, [{voffset}]")
+                                voffset = "rcx"
+
+                            self.checkVariableOperations(varName, value)
                             
                             self.checkVariableOperations(varName, value)
                             
@@ -292,10 +303,14 @@ class compiler:
                     
                         case 11: ## div
                             print(f"div = {varName} {mode} {dType} {value}")
-                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']','')) if varName.split('[')[1].replace(']','').isnumeric() else f"{name}_{varName.split('[')[1].replace(']','')}"
                             if voffset != -1:
                                 varName = varName.split('[')[0]
-                            
+
+                            if isinstance(voffset, str):
+                                self.compiledASM[".text"].append(f"mov r10, [{voffset}]")
+                                voffset = "r10"
+
                             self.checkVariableOperations(varName, value)
                             
                             ## we can add to a variable
@@ -303,11 +318,17 @@ class compiler:
                             value = value if not self.isVariable(value) else f"[{value}]"
                             varName = f"[{varName}]" if voffset == -1 else f"[{varName} + {voffset}*8]"
                             self.compiledASM[".text"].append(f"mov rdx, 0\nmov rax, {varName}\nmov rcx, {value}\ndiv rcx\nmov {varName}, rax")
+                        
                         case 9: ## sub
                             print(f"sub = {varName} {mode} {dType} {value}")
-                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']',''))
+                            voffset = -1 if '[' not in varName and ']' not in varName else int(varName.split('[')[1].replace(']','')) if varName.split('[')[1].replace(']','').isnumeric() else f"{name}_{varName.split('[')[1].replace(']','')}"
                             if voffset != -1:
                                 varName = varName.split('[')[0]
+                            
+                            if isinstance(voffset, str):
+                                self.compiledASM[".text"].append(f"mov rcx, [{voffset}]")
+                                voffset = "rcx"
+
                             
                             self.checkVariableOperations(varName, value)
                             
@@ -327,6 +348,20 @@ class compiler:
                 if nextFun not in self.package["livingFunctions"]:
                     raise Exception(f"function {nextFun} not found")
                 
+                if nextFun not in self.package["blocks"]:
+                    ## raw call to functions
+                    ## move the arguments to the correct registers
+                    loc_args = [arg for arg in loc_args if arg not in ["BS_STRING_TOKEN_AHOY", "BS_VARIABLE_TOKEN", "BS_INT_TOKEN", "BS_FLOAT_TOKEN", "BS_FUNCTION_TOKEN", "BS_GENERIC_FUNCTION_TOKEN"]]
+                    regIndex = 0
+                    for arg in loc_args:
+                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
+                        regIndex += 1
+                    self.compiledASM['.text'].append(f"call {nextFun}")
+                    if needReturnValue:
+                        self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
+                        needReturnValue = False
+                        returnVarName   = ""
+                    break
                 functionData = self.package["blocks"][nextFun]
                 
                 if functionData["args"][0] == "void":
@@ -350,11 +385,16 @@ class compiler:
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         self.compiledASM[".data"].append(f"bs_str{self.global_token_id}: db \"{argValue}\", 0xa")
                         self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [bs_str{self.global_token_id}] ; {token_no}")
-                    elif argType == "BS_VARIABLE_TOKEN": ## TODO: Check if variable is string or int
+                    elif argType == "BS_VARIABLE_TOKEN": 
                         size = -1
                         if '[' in argValue:
                             vname, size = argValue.split('[')
-                            size = int(size.replace(']',''))
+                            size = int(size.replace(']','')) if size.isnumeric() else size
+                            print(size)
+                            if isinstance(size, str):
+                                self.compiledASM[".text"].append(f"mov rax, [{vname}]")
+                                size = f"rax"
+
                             self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex+1]}, [{vname}] ; {token_no}")
                             argValue = f"{REGISTERS[regIndex+1]}+{size}" 
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{argValue}] ; {token_no}")
@@ -384,7 +424,12 @@ class compiler:
                             if '[' in vname:
                                 vname, size = vname.split('[')
                                 line[token_no+3] = vname
-                                size = int(size.replace(']',''))
+                                size = size.replace(']','')
+                                size = int(size) if size.isnumeric() else f"{name}_{size}" if self.isVariable(f"{name}_{size}") else -1
+                                assert size != -1, f"{name}:{lineNo} >> Array size is not an int nor a variable. '{size}'"
+                                if isinstance(size, str):
+                                    self.compiledASM[".text"].append(f"mov rax, [{size}]")
+                                    size = f"rax"
                                 vname = f"{vname}+{size}*8"
                             self.compiledASM[".text"].append(f"mov rax, [{vname}]")
                         elif vname in self.package["constants"]:
@@ -562,16 +607,17 @@ class compiler:
         pprint(self.compiledASM)
         
         ## now to join the sections
-        compiled = f"global {FUNCTION_MAIN_NAME} ; the start we expect\n%include \"libs/bs_stdlib.asm\"\n\n"
+        includes = '\n'.join([f'%include "{f}"' for f in self.package["includedFiles"] if f.endswith(".asm") or f.endswith('.s')])
+        compiled = f"global {FUNCTION_MAIN_NAME} ; the start we expect\n{includes}\n"
         for section in self.compiledASM:
             if self.compiledASM[section] != []:
                 compiled += f"\nsection {section}\n"
                 compiled += "\n".join(self.compiledASM[section])
                 compiled += "\n"
                 
-        with open("test.asm", "w+") as writer:
+        with open(self.outFile, "w+") as writer:
             writer.write(compiled)
             
         print("\n\n------ Compiled Assembly ------")
-        print("compiled to: test.asm")
-        print("nasm -felf64 test.asm && ld test.o && ./a.out")
+        print(f"compiled to: {self.outFile}")
+        print(f"nasm -felf64 {self.outFile} && ld {self.outFile.replace('.asm', '.o')} -o {self.outFile.replace('.asm', '.out')} && ./{self.outFile.replace('.asm', '.out')}")
