@@ -1,5 +1,15 @@
+#use libs/asm/bs_string.asm
 
-block strcmp str str -> int
-    str1 str2
-    
+block strlen str -> int
+    lnstr
+    stderr "strlen: not implemented\n" 1
+    return 1
+    #ln = bs_string_strlen lnstr
+    #return ln
+end
+
+block itos int -> str
+    iStr
+    s = bs_string_itos iStr
+    return s
 end

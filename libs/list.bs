@@ -1,0 +1,51 @@
+#use libs/asm/bs_list.asm
+
+const int BS_ENDOF_LIST 0xfffffff
+
+block List int -> int
+    size
+    pr = bs_makeList size
+    return pr
+end
+
+block li_insert int int int -> void
+    pr value index
+    ## TODO: check if index is valid
+    bs_insert pr value index
+end
+
+block li_get int int -> int
+    pr index
+    ## TODO: check if index is valid
+    got = bs_get pr index
+    return got
+end
+
+block li_remove int int -> void
+    pr index
+    ## TODO: check if index is valid
+    bs_remove pr index
+end
+
+block li_size int -> int
+    pr
+    sz = bs_length pr
+    sz / 8
+    return sz
+end
+
+block displayList int -> void
+    pr
+    index = 0
+    size = li_size pr
+    stdout "hello world!\n"
+    label top
+        if index == size
+        | stdout_i index
+        | return
+        x = li_get pr index
+        stdout_i x
+        index + 1
+        goto top
+    return
+end

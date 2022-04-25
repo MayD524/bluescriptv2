@@ -1,0 +1,45 @@
+#use libs/asm/bs_math.asm
+
+block power int int -> int
+    base pwr
+    if pwr == 0
+    | return 1
+    if pwr == 1
+    | return base
+    base * base
+    if pwr == 2
+    | return base * base
+    pwr - 1
+    label powerTop
+        base * base
+        if pwr != 0
+        | pwr - 1
+        | goto powerTop
+    return base
+end
+
+block mod int int -> int
+    dividend divisor
+    if divisor == 0
+    | print "Division by zero\n"
+    | return 1
+
+    re = bs_modulus dividend divisor
+    return re
+end
+
+block gcd int int -> int
+    x y
+    if x <= 0
+    | return 0
+    if y <= 0
+    | return 0
+
+    label gcdTop
+        tmp = y
+        y = mod x y
+        x = tmp
+        if y != 0
+        | goto gcdTop
+    return x
+end

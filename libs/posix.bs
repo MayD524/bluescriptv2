@@ -3,17 +3,117 @@
     this library is designed to be used for posix
     based commands
 *#
+#use libs/asm/posix.asm
+#use libs/asm/bs_fstream.asm
+#include libs/string.bs
+const str os_name "posix"
 
-block name void -> str 
-    os_name = "posix"
-    return os_name
+const int SUCCESS_EXIT 0
+const int FAILED_EXIT 1
+
+const int SYS_read 0
+const int SYS_write 1
+const int SYS_open 2
+const int SYS_close 3
+const int SYS_exit 60
+
+# file flags
+const int O_RDONLY 0
+const int O_WRONLY 1
+const int O_RDWR 2
+const int O_CREAT 64
+const int O_APPEND 1024
+const int O_DIRECTORY 65536
+
+
+block write str str -> void
+    # write to a file (w/ ptr)
+    pth data
+    stderr "Not implemented\n" 1
 end
 
-block syscall2 int int -> int
-    ## Used to make a syscall to the operating system
-    ## (linux)
-    rax rbi
-    asm "mov rax, "
-    asm rax
+block open str int -> int
+    pth mode
+    sysc = bs_open SYS_open pth mode
+    return sysc
+end
+
+block close int -> int
+    fd
+    sysc = bs_close SYS_close fd
+    return sysc
+end
+
+block mayloc int -> int
+    ## malloc (allocate memory)
+    size
+    new_ptr = 0
+    bs_malloc size new_ptr
+    return new_ptr
+end
+
+
+#block fsize int -> int
+#    fd
+#    size = bs_fileSize fd
+#    return size
+#end
+
+
+block read str -> int
+    pth
+    print pth
+    #exists = fileExists pth
+    #print exists
+    #if exists != 1
+    #| perr "file does not exist"
+    #| return 1 
+
+    #fd = open pth O_RDONLY
+    #size = bs_fileSize fd
+    #print size
+    #sysc = bs_read fd size
+    #print sysc
+    #if sysc != 0
+    #| perr "read failed"
+    #| return 1
     return 0
+end 
+
+block fileExists str -> int
+    ## 1 if exists, 0 if not
+    pth
+    rx = open pth O_RDONLY
+    if rx < 100 # we can assume that we wont have a file with a fd of 100 
+    | close rx
+    | return 1
+    return 0
+end
+
+block makeFile str -> int
+    pth 
+    exists = fileExists pth
+    if exists == 1
+    | pwarn "file already exists"
+    | return 1
+    mode = O_WRONLY
+    mode + O_CREAT
+    rx = open pth mode  
+    return 0
+end
+
+block pwarn str -> void
+    err
+    print err
+end
+
+block perr str -> void
+    msg
+    pwarn msg
+    exit FAILED_EXIT
+end
+
+block exit int -> void
+    exitCode
+    bs_asmExit exitCode
 end

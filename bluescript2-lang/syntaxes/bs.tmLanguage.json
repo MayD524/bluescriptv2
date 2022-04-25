@@ -10,6 +10,15 @@
 		},
 		{
 			"include": "#ints"
+		},
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#comments_multi"
+		},
+		{
+			"include": "#bs_types"
 		}
 	],
 	"repository": {
@@ -43,7 +52,8 @@
 			"patterns" : [
 				{
 					"name" : "comment.line.number-sign",
-					"begin": "#"
+					"begin": "#",
+					"end": "$\\n?"
 				}
 			]
 		},
@@ -51,8 +61,16 @@
 			"patterns" : [
 				{
 					"name" : "comment.line.number-sign",
-					"begin": "#*",
-					"end"  : "*#"
+					"begin": "#\\*",
+					"end"  : "\\*#"
+				}
+			]
+		},
+		"bs_types": {
+			"patterns" : [
+				{
+					"name" : "storage.type.bs",
+					"match": "\\b(int|void|str)\\b"
 				}
 			]
 		}

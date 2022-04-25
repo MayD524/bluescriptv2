@@ -1,0 +1,26 @@
+
+const int true 1
+const int false 0
+
+block bsnot int -> int
+    ina
+    if ina == true
+    | return false
+    return true
+end
+
+block bsand int int -> int
+    ina inb 
+    if ina == inb
+    | return true
+    return false
+end
+
+block bsor int int -> int 
+    ina inb
+    if ina == true
+    | return true
+    if inb == true
+    | return true
+    return false
+end

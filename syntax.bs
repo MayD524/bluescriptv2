@@ -1,14 +1,24 @@
 #include libs/stdlib.bs
-#const int km 10
+#include libs/posix.bs
+#include libs/list.bs
 
-block main void -> int  
-    a[10] = 0 1 2 3
-    b = 5
-    print a[1]
-    a[1] + 10
-    print a[1]
-    a[b] + 100
-    a[b] * 2
-    print a[b]
+block main void -> int
+    li = List 10
+    i = 0
+    label top
+        x = li_get li i
+        li_insert li i i
+        if i != 9
+        | i + 1
+        | goto top
+    
+    i - i
+    label t2
+        x = li_get li i
+        stdout_i x
+        if i != 9
+        | i + 1
+        | goto t2
+
     return 0
 end

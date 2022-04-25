@@ -3,6 +3,9 @@ import parse
 import sys
 import os
 
+__version__ = "0.0.1"
+__os_name__ = "Windows" if os.name == "nt" else "Linux"
+
 def bs_main(fileName:str, output:str) -> None:
     with open(fileName, "r") as f:
         data = f.readlines()
@@ -13,7 +16,7 @@ def bs_main(fileName:str, output:str) -> None:
     cs.compile()
 
 if __name__ == "__main__":
-    print("BlueScript Compiler: v0.1 (Unix) by May Draskovics")
+    print(f"BlueScript Compiler: v{__version__} ({__os_name__}) by May Draskovics")
     if len(sys.argv) < 2:
         sys.tracebacklimit = 0
         print("Usage: bs <file> [output]")

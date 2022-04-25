@@ -3,25 +3,100 @@ Todo:
     - alloc/malloc (mayloc lol)
     - free
     - stdlib
+        - string
+            - strcpy
+            - strcmp
+        - ints
+            - stoi/atoi
+            - math
+        - bool
+            - True/False
+            - logic operators (make them functions)
+        - bit manipulation (more functions!)
+            - shifts and logic? (do in asm)
     - IO - stdout; stdin
         - [done] print 
         - input
     - allow generic syscalls
+        - a syscall function?
+            (do in stdlib)
+    - advanced datatypes
+        - maps/dicts
+        - sets
+        - structs
+        - classes? (most likely not)
+        - generators (array extension)
+    - dynamic memory
+        - malloc (see above)
+        - pointers
     - better errors
     - command line args
-    - file io
+        - sorta working currently (will fix)
+    - [maybe] file io
+        - read
+        - write
     - string compair
     - optimize assembly
-    - set value in arrays 
-        - ie. a[0] = <value> 
-            (currently does not work)
-    
+    - [maybe] Cross-platform
+        - (Win32)
+        - (Unix) [default]
+        - (eZ180? maybe)
+        - (Mac?) (this will be a pain?)
+    - preprocessor
+        - [done ish] define
+        - c-style preprocessing
+    - optimize python compiler/clean up (idk how much I can do)
+        - [done] change how i get registers 
+            # this may be weird but could work
+            - ie. instead of RAX, {REGISTERS[0]} # rax is 0 (allows for different arch)
+    - better logic
+        - if true (is the same as) if true == 1 ; if true == true
+            (currently you have to the the others)
+        - maybe an else clause
+    - pattern matching?
+    - one liners
+        - [done] intro of ';' operator (line extension)
+        - 'val' if 'statement' 'val2'
+            (works like python but without else)
+    - ptrs
+    - c integration
+        # this will make my life with stdlib so much easier
+        # no writing malloc for me :)
+        - allow loading dll
+        - allow linking with *.o files
+            (shouldn't be that hard)
+            - add functions to compiler.package['livingFunctions']
+            - <ret-type> <func-name> (<arg-type> <arg-name>,...) { <stuff> }
+    - new number system
+        - floats
+        - sign vs unsign print
+        - shorts/longs
+    - nesting
+        - nested ifs
+    - multi-returns
+    - stack movements
+
+Notes:
+    - mayloc (malloc) is currently using
+        the C-Malloc and C-Free later change
+        to custom solution (just don't wanna wait
+        on that one part)
 
 Maybe:
     - fix token consistency issue
         - use enums
 
+Bugs:
+    - reassignment
+    - malloc (reading files kinda buggy)
+
 Done:
+    - set value in arrays 
+        - ie. a[0] = <value> 
+            (currently does not work)
+    - globals
+    - bs & asm co-existance
+        - currently it is kinda stupid (unsafe calls (no argc check nor typing))
     - print
     - function returns and params
     - string literals
@@ -39,3 +114,8 @@ Done:
     - scope
     - recursion
     - auto gen variable names
+    - negatives
+    - hex and binary
+
+Resources:
+    - https://github.com/Holeryn/ASM_utils/blob/master/Utils.asm
