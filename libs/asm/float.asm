@@ -1,3 +1,6 @@
+section .data
+    bsFloatDecimalPoint: db "."
+
 section .text
 %define __BS_FLOAT_HEAD__ 0xfc
 
@@ -11,7 +14,7 @@ bs_makeFloat:
 
 bs_isFloat:
     ; check if the first byte is 0xfc
-    mov rcx, [rax+0*8]
+    mov rcx, [rax*0+8]
     cmp rcx, __BS_FLOAT_HEAD__
     jne .bs_isNotFloat
     ; if it is, return 1
@@ -23,8 +26,8 @@ bs_isFloat:
     ret
 
 bs_fcheck:
-    ; int | float in rax
-    ; int | float in rdi
+    ; float in rax
+    ; float in rdi
     mov rbx, 0
     push rax
 
@@ -58,12 +61,65 @@ bs_fcheck:
 
 
 bs_fAdd:
-    ; int | float in rax
-    ; int | float in rdi
+    ; float in rax
+    ; float in rdi
     push rax
     push rdi
     call bs_fcheck
     call stdout_i
     pop rdi
     pop rax
+    ret
+
+bs_fiSet:
+    ; float in rax
+    ; int in rdi
+    ; int in rsi
+    mov [rax+1*8], rdi
+    mov [rax+2*8], rsi
+    ret
+
+bs_fiMul:
+    push rax
+    call bs_isFloat
+    mov r8, rax
+    pop rax
+    cmp r8, 1
+    jne .notFloat
+    imul [rax+1*8], rdi
+
+    .notFloat:
+    mov rax, 1
+    ret
+
+bs_fiAdd:
+    ; float in rax
+    ; int | float in rdi
+    push rax
+    call bs_isFloat
+    mov r8, rax
+    pop rax
+    cmp r8, 1
+    jne .notFloat
+
+    add [rax+1*8], rdi
+    ret
+
+    .notFloat:
+    mov rax, 1
+    ret
+
+bs_stdoutf:
+    ; float in rax
+    mov r8, [rax+1*8]
+    mov r9, [rax+2*8]
+
+    mov rax, r8
+    call stdout_i
+
+    mov rax, bsFloatDecimalPoint
+    call stdout
+
+    mov rax, r9
+    call stdout_i
     ret

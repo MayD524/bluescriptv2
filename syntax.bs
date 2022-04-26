@@ -1,22 +1,11 @@
 #include libs/stdlib.bs
 #include libs/posix.bs
 
-block recursive int -> void
-    cur
-    stdout_i cur
-    cur + 1
-    if cur == 10
-    | return
-    recursive cur
-end
+#use libs/asm/float.asm
 
 block main void -> int
-    i = 0
-    label hi
-    i + 1
-    stdout_i i
-    if i != 10
-    | goto hi
-
+    flt = bs_makeFloat
+    bs_fiSet flt 0 1
+    bs_stdoutf flt
     return 0
 end

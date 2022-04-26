@@ -161,20 +161,32 @@ class compiler:
     def isVariable(self, name:str) -> bool:
         if name.isnumeric(): return False
         return True if self.getExtention(name) is not False else False
-        
+    
+    def strExists(self, data:str) -> str|None:
+        for ext in self.compiledASM[".data"]:
+            if data in ext:
+                return ext.split(":",1)[0]
+
+        return None
+
     def allocStr(self, value:str, useName:str=None) -> str:
         """
             value (str) : the value of the string
 
             ret   (str) : the string id
         """
+        if ( name := self.strExists(value)) is not None:
+            return name
+            
         bs_str = f"bs_str{self.global_token_id}: db " if useName is None else f"{useName}: db "
         if "\\n" in value:
             bs_str += "\"" + value.replace("\\n","") + "\", 0xa"
         else:
             bs_str += "\"" + value + "\""
         
+
         self.compiledASM[".data"].append(f"{bs_str}, 0")
+        return f"bs_str{self.global_token_id}"
 
     def checkVariableOperations(self, varName:str, value:str) -> None:
         print(f"{varName} = {value}")
@@ -308,7 +320,6 @@ class compiler:
                             self.package[ext][varName][0] = dType#'int' if dType == "BS_INT_TOKEN" else "str"
                         else:
                             self.package[ext][varName] = [self.typeOf(value), value, False, len(value)]
-                            self.compiledASM[".text"].append(f"push rax\nlea rax, [bs_str{self.global_token_id}]; get ptr to str\nmov [{varName}], rax\npop rax")
                             if not self.package[ext][varName][2]:
                                 if size == -1 and not self.package[ext][varName][2]:
                                     self.allocSpace(varName, "str", len(value) + 1)
@@ -316,7 +327,8 @@ class compiler:
                                     data = ','.join([str(i) for i in range(size)])
                                     self.compiledASM[".data"].append(f"{varName} dq {data}")
                                     self.package[ext][varName][3] = size
-                            self.allocStr(value)
+                            strName = self.allocStr(value)
+                            self.compiledASM[".text"].append(f"push rax\nlea rax, [{strName}]; get ptr to str\nmov [{varName}], rax\npop rax")
                             self.package[ext][varName][2] = True if len(self.package[ext][varName]) != 3 else self.package[ext][varName] ## the variable has been declared
                             self.package[ext][varName][1] = value if ext != "arrays" else self.package[ext][varName][1]
                             self.package[ext][varName][3] = size
@@ -450,8 +462,8 @@ class compiler:
                         raise Exception(f"function {nextFun} takes {functionData['args'][arg_ptr-arg_ptr//2]} as argument {arg_ptr}, but got {self.typeOf(argValue)}. variable: '{argValue}'")
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
-                        self.allocStr(argValue)
-                        self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [bs_str{self.global_token_id}] ; {token_no}")
+                        strName = self.allocStr(argValue)
+                        self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [{strName}] ; {token_no}")
                     elif argType == "BS_VARIABLE_TOKEN": 
                         size = -1
                         if '[' in argValue:
@@ -494,14 +506,14 @@ class compiler:
                         if self.isVariable(cmp1):
                             cmp1 = f"[{cmp1}]"
                         elif self.typeOf(cmp1) == "str":
-                            self.allocStr(cmp1)
-                            cmp1 = f"[bs_str{self.global_token_id}]"
+                            strName = self.allocStr(cmp1)
+                            cmp1 = f"[{strName}]"
 
                         if self.isVariable(cmp2):
                             cmp2 = f"[{cmp2}]"
                         elif self.typeOf(cmp2) == "str":
-                            self.allocStr(cmp2)
-                            cmp2 = f"[bs_str{self.global_token_id}]"
+                            strName = self.allocStr(cmp2)
+                            cmp2 = f"[{strName}]"
                         
                         
                         ## move cmp1 to rax and cmp2 to rdx

@@ -85,8 +85,6 @@ Maybe:
         - use enums
 
 Bugs:
-    - reassignment
-    - malloc (reading files kinda buggy)
 
 Done:
     - set value in arrays 

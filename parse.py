@@ -20,7 +20,7 @@ BS_KEY_TOKENS = {
     "else"  : 1,
     "int"   : 2,
     "void"  : 3,
-    #"ptr"   : 4,
+    "ptr"   : 2,
     #"char"  : 5,
     "float" : 6,
     "return": 7,

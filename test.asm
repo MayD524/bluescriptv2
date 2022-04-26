@@ -1,26 +1,34 @@
 global main: ; the start we expect
+%include "libs/asm/float.asm"
 %include "libs/asm/bs_stdlib.asm"
 %include "libs/asm/posix.asm"
 %include "libs/asm/bs_fstream.asm"
 %include "libs/asm/bs_string.asm"
-%include "libs/asm/float.asm"
+
 
 section .text
-global main
-
 main:
-    call bs_makeFloat
-    push rax
-    call stdout_i
-    pop rax
-    mov rdi, 10
-    call bs_fAdd
+pop rax
+mov [argc], rax
+pop rax
+mov [argv], rax
 
+call bs_makeFloat
+mov [main_flt], rax
 
-    mov rax, 60
-    mov rdi, 0
-    syscall
-    ret
+mov rax, [main_flt]
+mov rdi, 0
+mov rsi, 1
+call bs_fiSet
+
+mov rax, [main_flt]
+call bs_stdoutf
+
+mov rax, 60
+mov rdi, 0
+syscall
+
+ret
 
 stderr:
 mov [stderr_msg], rax
@@ -32,12 +40,12 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end15
+je .bs_logic_end4
 
 mov rax, [stderr_eno] ; 0
 call exit ; 0
 
-.bs_logic_end15:
+.bs_logic_end4:
 
 mov rax, [warno]
 add rax, 1
@@ -46,12 +54,12 @@ mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jl .bs_logic_end18
+jl .bs_logic_end7
 
 mov rax, 1 ; 0
 call exit ; 0
 
-.bs_logic_end18:
+.bs_logic_end7:
 
 ret
 
@@ -93,7 +101,7 @@ ret
 write:
 mov [write_pth], rax
 mov [write_data], rdi
-lea rax, [bs_str20] ; 0
+lea rax, [bs_str9] ; 0
 mov rdi, 1 ; 0
 call stderr ; 0
 
@@ -150,7 +158,7 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jle .bs_logic_end35
+jle .bs_logic_end24
 
 mov rax, [fileExists_rx] ; 0
 call close ; 0
@@ -158,7 +166,7 @@ call close ; 0
 mov rax, 1 ; return value in rax
 ret
 
-.bs_logic_end35:
+.bs_logic_end24:
 
 mov rax, 0 ; return value in rax
 ret
@@ -172,15 +180,15 @@ mov [makeFile_exists], rax
 mov rax, [makeFile_exists]
 mov rdx, 1
 cmp rax, rdx
-jne .bs_logic_end43
+jne .bs_logic_end32
 
-lea rax, [bs_str45] ; 0
+lea rax, [bs_str34] ; 0
 call pwarn ; 0
 
 mov rax, 1 ; return value in rax
 ret
 
-.bs_logic_end43:
+.bs_logic_end32:
 
 mov rax, [O_WRONLY]
 mov [makeFile_mode], rax
@@ -214,7 +222,7 @@ call exit ; 0
 ret
 strlen:
 mov [strlen_lnstr], rax
-lea rax, [bs_str53] ; 0
+lea rax, [bs_str42] ; 0
 mov rdi, 1 ; 0
 call stderr ; 0
 
@@ -262,8 +270,7 @@ argc resw 4
 argv resw 10
 ;--- other ---
 
-recursive_cur resw 4 ; stores 64-bit int
-main_i resw 4 ; stores 64-bit int
+main_flt resw 4 ; stores 64-bit int
 stderr_msg resw 4 ; stores char
 stderr_eno resw 4 ; stores 64-bit int
 stdout_msg resw 4 ; stores char
@@ -292,7 +299,6 @@ perr_msg resw 4 ; stores char
 strlen_lnstr resw 4 ; stores char
 itos_iStr resw 4 ; stores 64-bit int
 itos_s resw 4 ; stores char
-main_hi resw 4 ; stores char
 itos_bs_string_itos resw 4 ; stores char
 
 section .data
@@ -300,8 +306,8 @@ section .data
 recursiveDepth db 0
 ;--- other ---
 
-bs_str20: db "Not implemented", 0xa, 0
-bs_str45: db "file already exists", 0
-bs_str53: db "strlen: not implemented", 0xa, 0
+bs_str9: db "Not implemented", 0xa, 0
+bs_str34: db "file already exists", 0
+bs_str42: db "strlen: not implemented", 0xa, 0
 errno dd 0
 warno dd 0
