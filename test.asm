@@ -3,63 +3,24 @@ global main: ; the start we expect
 %include "libs/asm/posix.asm"
 %include "libs/asm/bs_fstream.asm"
 %include "libs/asm/bs_string.asm"
-
+%include "libs/asm/float.asm"
 
 section .text
-recursive:
-mov [recursive_cur], rax
-mov rax, [recursive_cur] ; 0
-call stdout_i ; 0
+global main
 
-mov rax, [recursive_cur]
-add rax, 1
-mov [recursive_cur], rax
-
-mov rax, [recursive_cur]
-mov rdx, 10
-cmp rax, rdx
-jne .bs_logic_end1
-
-ret
-
-.bs_logic_end1:
-
-mov rax, [recursive_cur] ; 0
-call recursive ; 0
-
-ret
 main:
-pop rax
-mov [argc], rax
-pop rax
-mov [argv], rax
+    call bs_makeFloat
+    push rax
+    call stdout_i
+    pop rax
+    mov rdi, 10
+    call bs_fAdd
 
-mov rax, 0
-mov [main_i], rax
 
-.main_hi:
-
-mov rax, [main_i]
-add rax, 1
-mov [main_i], rax
-
-mov rax, [main_i] ; 0
-call stdout_i ; 0
-
-mov rax, [main_i]
-mov rdx, 10
-cmp rax, rdx
-je .bs_logic_end8
-
-jmp .main_hi
-
-.bs_logic_end8:
-
-mov rax, 60
-mov rdi, 0
-syscall
-
-ret
+    mov rax, 60
+    mov rdi, 0
+    syscall
+    ret
 
 stderr:
 mov [stderr_msg], rax
