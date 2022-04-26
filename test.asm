@@ -2,77 +2,58 @@ global main: ; the start we expect
 %include "libs/asm/bs_stdlib.asm"
 %include "libs/asm/posix.asm"
 %include "libs/asm/bs_fstream.asm"
-%include "libs/asm/bs_list.asm"
 %include "libs/asm/bs_string.asm"
 
 
 section .text
+recursive:
+mov [recursive_cur], rax
+mov rax, [recursive_cur] ; 0
+call stdout_i ; 0
+
+mov rax, [recursive_cur]
+add rax, 1
+mov [recursive_cur], rax
+
+mov rax, [recursive_cur]
+mov rdx, 10
+cmp rax, rdx
+jne .bs_logic_end1
+
+ret
+
+.bs_logic_end1:
+
+mov rax, [recursive_cur] ; 0
+call recursive ; 0
+
+ret
 main:
 pop rax
 mov [argc], rax
 pop rax
 mov [argv], rax
 
-mov rax, 10 ; 3
-call List ; 3
-mov [main_li], rax
-
 mov rax, 0
 mov [main_i], rax
 
-.main_top:
-
-mov rax, [main_li] ; 3
-mov rdi, [main_i] ; 3
-call li_get ; 3
-mov [main_x], rax
-
-mov rax, [main_li] ; 0
-mov rdi, [main_i] ; 0
-mov rsi, [main_i] ; 0
-call li_insert ; 0
-
-mov rax, [main_i]
-mov rdx, 9
-cmp rax, rdx
-je .bs_logic_end8
+.main_hi:
 
 mov rax, [main_i]
 add rax, 1
 mov [main_i], rax
 
-jmp .main_top
-
-.bs_logic_end8:
-
-mov rax, [main_i]
-mov rax, [main_i]
-mov rbx, [main_i]
-sub rax, rbx
-mov [main_i], rax
-
-.main_t2:
-
-mov rax, [main_li] ; 3
-mov rdi, [main_i] ; 3
-call li_get ; 3
-mov [main_x], rax
-
-mov rax, [main_x] ; 0
+mov rax, [main_i] ; 0
 call stdout_i ; 0
 
 mov rax, [main_i]
-mov rdx, 9
+mov rdx, 10
 cmp rax, rdx
-je .bs_logic_end20
+je .bs_logic_end8
 
-mov rax, [main_i]
-add rax, 1
-mov [main_i], rax
+jmp .main_hi
 
-jmp .main_t2
-
-.bs_logic_end20:
+.bs_logic_end8:
 
 mov rax, 60
 mov rdi, 0
@@ -90,12 +71,26 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end28
+je .bs_logic_end15
 
 mov rax, [stderr_eno] ; 0
 call exit ; 0
 
-.bs_logic_end28:
+.bs_logic_end15:
+
+mov rax, [warno]
+add rax, 1
+mov [warno], rax
+
+mov rax, [warno]
+mov rdx, 2
+cmp rax, rdx
+jl .bs_logic_end18
+
+mov rax, 1 ; 0
+call exit ; 0
+
+.bs_logic_end18:
 
 ret
 
@@ -137,7 +132,7 @@ ret
 write:
 mov [write_pth], rax
 mov [write_data], rdi
-lea rax, [bs_str30] ; 0
+lea rax, [bs_str20] ; 0
 mov rdi, 1 ; 0
 call stderr ; 0
 
@@ -194,7 +189,7 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jle .bs_logic_end45
+jle .bs_logic_end35
 
 mov rax, [fileExists_rx] ; 0
 call close ; 0
@@ -202,7 +197,7 @@ call close ; 0
 mov rax, 1 ; return value in rax
 ret
 
-.bs_logic_end45:
+.bs_logic_end35:
 
 mov rax, 0 ; return value in rax
 ret
@@ -216,15 +211,15 @@ mov [makeFile_exists], rax
 mov rax, [makeFile_exists]
 mov rdx, 1
 cmp rax, rdx
-jne .bs_logic_end53
+jne .bs_logic_end43
 
-lea rax, [bs_str55] ; 0
+lea rax, [bs_str45] ; 0
 call pwarn ; 0
 
 mov rax, 1 ; return value in rax
 ret
 
-.bs_logic_end53:
+.bs_logic_end43:
 
 mov rax, [O_WRONLY]
 mov [makeFile_mode], rax
@@ -256,106 +251,9 @@ mov rax, [FAILED_EXIT] ; 0
 call exit ; 0
 
 ret
-List:
-mov [List_size], rax
-mov rax, [List_size]
-call bs_makeList
-mov [List_pr], rax
-
-mov rax, [List_pr] ; return value in rax
-ret
-
-li_insert:
-mov [li_insert_pr], rax
-mov [li_insert_value], rdi
-mov [li_insert_index], rsi
-mov rax, [li_insert_pr]
-mov rdi, [li_insert_value]
-mov rsi, [li_insert_index]
-call bs_insert
-
-ret
-li_get:
-mov [li_get_pr], rax
-mov [li_get_index], rdi
-mov rax, [li_get_pr]
-mov rdi, [li_get_index]
-call bs_get
-mov [li_get_got], rax
-
-mov rax, [li_get_got] ; return value in rax
-ret
-
-li_remove:
-mov [li_remove_pr], rax
-mov [li_remove_index], rdi
-mov rax, [li_remove_pr]
-mov rdi, [li_remove_index]
-call bs_remove
-
-ret
-li_size:
-mov [li_size_pr], rax
-mov rax, [li_size_pr]
-call bs_length
-mov [li_size_sz], rax
-
-mov rax, [li_size_sz]
-mov rdx, 0
-mov rax, [li_size_sz]
-mov rcx, 8
-div rcx
-mov [li_size_sz], rax
-
-mov rax, [li_size_sz] ; return value in rax
-ret
-
-displayList:
-mov [displayList_pr], rax
-mov rax, 0
-mov [displayList_index], rax
-
-mov rax, [displayList_pr] ; 3
-call li_size ; 3
-mov [displayList_size], rax
-
-lea rax, [bs_str79] ; 0
-call stdout ; 0
-
-.displayList_top:
-
-mov rax, [displayList_index]
-mov rdx, [displayList_size]
-cmp rax, rdx
-jne .bs_logic_end82
-
-mov rax, [displayList_index] ; 0
-call stdout_i ; 0
-
-ret
-
-.bs_logic_end82:
-
-mov rax, [displayList_pr] ; 3
-mov rdi, [displayList_index] ; 3
-call li_get ; 3
-mov [displayList_x], rax
-
-mov rax, [displayList_x] ; 0
-call stdout_i ; 0
-
-mov rax, [displayList_index]
-add rax, 1
-mov [displayList_index], rax
-
-jmp .displayList_top
-
-ret
-
-ret
 strlen:
 mov [strlen_lnstr], rax
-lea rax, [bs_str90] ; 0
+lea rax, [bs_str53] ; 0
 mov rdi, 1 ; 0
 call stderr ; 0
 
@@ -391,7 +289,6 @@ O_RDWR dd 2
 O_CREAT dd 64
 O_APPEND dd 1024
 O_DIRECTORY dd 65536
-BS_ENDOF_LIST dd 0xfffffff
 
 section .bss
 ;--- for printing numbers ---
@@ -404,9 +301,8 @@ argc resw 4
 argv resw 10
 ;--- other ---
 
-main_li resw 4 ; stores 64-bit int
+recursive_cur resw 4 ; stores 64-bit int
 main_i resw 4 ; stores 64-bit int
-main_x resw 4 ; stores 64-bit int
 stderr_msg resw 4 ; stores char
 stderr_eno resw 4 ; stores 64-bit int
 stdout_msg resw 4 ; stores char
@@ -432,28 +328,10 @@ makeFile_mode resw 4 ; stores 64-bit int
 makeFile_rx resw 4 ; stores 64-bit int
 pwarn_err resw 4 ; stores char
 perr_msg resw 4 ; stores char
-List_size resw 4 ; stores 64-bit int
-List_pr resw 4 ; stores 64-bit int
-li_insert_pr resw 4 ; stores 64-bit int
-li_insert_value resw 4 ; stores 64-bit int
-li_insert_index resw 4 ; stores 64-bit int
-li_get_pr resw 4 ; stores 64-bit int
-li_get_index resw 4 ; stores 64-bit int
-li_get_got resw 4 ; stores 64-bit int
-li_remove_pr resw 4 ; stores 64-bit int
-li_remove_index resw 4 ; stores 64-bit int
-li_size_pr resw 4 ; stores 64-bit int
-li_size_sz resw 4 ; stores 64-bit int
-displayList_pr resw 4 ; stores 64-bit int
-displayList_index resw 4 ; stores 64-bit int
-displayList_size resw 4 ; stores 64-bit int
-displayList_x resw 4 ; stores 64-bit int
 strlen_lnstr resw 4 ; stores char
 itos_iStr resw 4 ; stores 64-bit int
 itos_s resw 4 ; stores char
-main_top resw 4 ; stores char
-main_t2 resw 4 ; stores char
-displayList_top resw 4 ; stores char
+main_hi resw 4 ; stores char
 itos_bs_string_itos resw 4 ; stores char
 
 section .data
@@ -461,8 +339,8 @@ section .data
 recursiveDepth db 0
 ;--- other ---
 
-bs_str30: db "Not implemented", 0xa, 0
-bs_str55: db "file already exists", 0
-bs_str79: db "hello world!", 0xa, 0
-bs_str90: db "strlen: not implemented", 0xa, 0
+bs_str20: db "Not implemented", 0xa, 0
+bs_str45: db "file already exists", 0
+bs_str53: db "strlen: not implemented", 0xa, 0
 errno dd 0
+warno dd 0

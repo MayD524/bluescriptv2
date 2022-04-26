@@ -3,7 +3,7 @@ import parse
 import sys
 import os
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __os_name__ = "Windows" if os.name == "nt" else "Linux"
 
 def bs_main(fileName:str, output:str) -> None:
@@ -26,5 +26,4 @@ if __name__ == "__main__":
     
     filename = sys.argv[1]
     output = sys.argv[2] if len(sys.argv) > 2 else "a.asm"
-    test_file = "syntax.bs"
     bs_main(filename, output)

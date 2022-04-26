@@ -1,8 +1,4 @@
-
 from pprint import pprint
-
-from sympy import re
-
 
 BS_GENERIC_TYPES = [
     #"char",

@@ -10,7 +10,13 @@ end
 
 block li_insert int int int -> void
     pr value index
-    ## TODO: check if index is valid
+    size = li_size pr
+    if index > size
+    | stderr "index out of range\n" 0
+    | return
+    x = li_get pr index
+    if x == BS_ENDOF_LIST
+    | return
     bs_insert pr value index
 end
 

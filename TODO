@@ -14,6 +14,7 @@ Todo:
             - logic operators (make them functions)
         - bit manipulation (more functions!)
             - shifts and logic? (do in asm)
+    - one line math
     - IO - stdout; stdin
         - [done] print 
         - input
@@ -26,9 +27,6 @@ Todo:
         - structs
         - classes? (most likely not)
         - generators (array extension)
-    - dynamic memory
-        - malloc (see above)
-        - pointers
     - better errors
     - command line args
         - sorta working currently (will fix)

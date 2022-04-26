@@ -1,24 +1,22 @@
 #include libs/stdlib.bs
 #include libs/posix.bs
-#include libs/list.bs
+
+block recursive int -> void
+    cur
+    stdout_i cur
+    cur + 1
+    if cur == 10
+    | return
+    recursive cur
+end
 
 block main void -> int
-    li = List 10
     i = 0
-    label top
-        x = li_get li i
-        li_insert li i i
-        if i != 9
-        | i + 1
-        | goto top
-    
-    i - i
-    label t2
-        x = li_get li i
-        stdout_i x
-        if i != 9
-        | i + 1
-        | goto t2
+    label hi
+    i + 1
+    stdout_i i
+    if i != 10
+    | goto hi
 
     return 0
 end
