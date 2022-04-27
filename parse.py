@@ -20,7 +20,7 @@ BS_KEY_TOKENS = {
     "else"  : 1,
     "int"   : 2,
     "void"  : 3,
-    "ptr"   : 2,
+    #"ptr"   : 2,
     #"char"  : 5,
     "float" : 6,
     "return": 7,
@@ -38,10 +38,6 @@ BS_KEY_TOKENS = {
     "<="    : 17,
     "=="    : 18,
     "!="    : 19,
-    
-    "&&"    : 19,
-    "||"    : 20,
-    "! "    : 21,
     
     "asm"   : 25,
     ";"     : 26,
@@ -113,11 +109,12 @@ class parser:
                     elif ":" in line and not "." in line:
                         
                         self.livingFunctions.append(line.strip().replace(":", ""))
+                        
             elif line.startswith("#extern"):
                 line = line.split(" ", 1)[1].strip()
                 self.externs.append(line)
                 self.livingFunctions.append(line)
-                
+
     def pre_parse(self) -> None:
         self.handleIncludes()
         inMultiLineComment = False
@@ -126,8 +123,11 @@ class parser:
         ## TODO: check if string contains # or #**#
         line_no = 0
         
+        whileCheck   = False
+        whileBlkName = []
+        
         while line_no < len(self.combined_data):
-            line = self.combined_data[line_no]
+            line = self.combined_data[line_no].strip()
             if BS_COMMENT_START in line:
                 self.combined_data[line_no] = line.split(BS_COMMENT_START, 1)[0]
                 inMultiLineComment = True
@@ -144,6 +144,25 @@ class parser:
                 lines = line.split(";")
                 self.combined_data[line_no] = lines[0].strip()
                 self.combined_data.insert(line_no + 1, lines[1].strip())
+                
+            elif line == "do":
+                line = f"label bsDo_{line_no}"
+                whileCheck = True
+                whileBlkName.append(f"bsDo_{line_no}")
+                self.combined_data[line_no] = line
+                
+            elif line.startswith("while"):
+                assert whileCheck, "While without do"
+                
+                logic = line.split("while", 1)[1].strip()
+                self.combined_data[line_no] = f"if {logic}"
+                self.combined_data.insert(line_no + 1, f"| goto {whileBlkName[-1]}")
+                
+                
+                whileBlkName.pop()
+                if len(whileBlkName) == 0:
+                    whileCheck = False
+                
                 
             line_no += 1
                 
@@ -166,7 +185,7 @@ class parser:
                 _, blockName, argc = line.split(" ", 2)
                 argc, retType = argc.split("->", 1)
                 args = argc.split(" ")
-                args = [arg.strip() for arg in args if arg != ""]
+                args = [arg.strip() if arg != "ptr" else "int" for arg in args if arg != ""]
                 argc = len(args)
                 
             elif line.startswith("const"):
@@ -213,6 +232,8 @@ class parser:
         pprint(self.globalVariables)
         
         self.tokenizeBlocks()
+        
+        pprint(self.blocks["main"])
     
     def typeOf(self, token:str, blockName:str) -> str:
         if token in BS_KEY_TOKENS:
@@ -233,7 +254,7 @@ class parser:
         
         elif token in self.globalVariables:
             return self.globalVariables[token][0]
-          
+
         ## check if it's a float
         elif "." in token and token.replace(".", "").isnumeric():
             return "float"

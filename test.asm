@@ -7,22 +7,26 @@ global main: ; the start we expect
 
 
 section .text
+funny:
+mov [funny_ptr], rax
+mov rax, [funny_ptr] ; 0
+call stdout_i ; 0
+
+lea rax, [bs_str0] ; 0
+call stdout ; 0
+
+ret
 main:
 pop rax
 mov [argc], rax
 pop rax
 mov [argv], rax
 
-call bs_makeFloat
-mov [main_flt], rax
+mov rax, 10
+mov [main_x], rax
 
-mov rax, [main_flt]
-mov rdi, 0
-mov rsi, 1
-call bs_fiSet
-
-mov rax, [main_flt]
-call bs_stdoutf
+mov rax, [main_x] ; 0
+call funny ; 0
 
 mov rax, 60
 mov rdi, 0
@@ -40,12 +44,12 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end4
+je .bs_logic_end3
 
 mov rax, [stderr_eno] ; 0
 call exit ; 0
 
-.bs_logic_end4:
+.bs_logic_end3:
 
 mov rax, [warno]
 add rax, 1
@@ -54,12 +58,12 @@ mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jl .bs_logic_end7
+jl .bs_logic_end6
 
 mov rax, 1 ; 0
 call exit ; 0
 
-.bs_logic_end7:
+.bs_logic_end6:
 
 ret
 
@@ -101,7 +105,7 @@ ret
 write:
 mov [write_pth], rax
 mov [write_data], rdi
-lea rax, [bs_str9] ; 0
+lea rax, [bs_str8] ; 0
 mov rdi, 1 ; 0
 call stderr ; 0
 
@@ -158,7 +162,7 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jle .bs_logic_end24
+jle .bs_logic_end23
 
 mov rax, [fileExists_rx] ; 0
 call close ; 0
@@ -166,7 +170,7 @@ call close ; 0
 mov rax, 1 ; return value in rax
 ret
 
-.bs_logic_end24:
+.bs_logic_end23:
 
 mov rax, 0 ; return value in rax
 ret
@@ -180,15 +184,15 @@ mov [makeFile_exists], rax
 mov rax, [makeFile_exists]
 mov rdx, 1
 cmp rax, rdx
-jne .bs_logic_end32
+jne .bs_logic_end31
 
-lea rax, [bs_str34] ; 0
+lea rax, [bs_str33] ; 0
 call pwarn ; 0
 
 mov rax, 1 ; return value in rax
 ret
 
-.bs_logic_end32:
+.bs_logic_end31:
 
 mov rax, [O_WRONLY]
 mov [makeFile_mode], rax
@@ -222,7 +226,7 @@ call exit ; 0
 ret
 strlen:
 mov [strlen_lnstr], rax
-lea rax, [bs_str42] ; 0
+lea rax, [bs_str41] ; 0
 mov rdi, 1 ; 0
 call stderr ; 0
 
@@ -270,7 +274,8 @@ argc resw 4
 argv resw 10
 ;--- other ---
 
-main_flt resw 4 ; stores 64-bit int
+funny_ptr resw 4 ; stores 64-bit int
+main_x resw 4 ; stores 64-bit int
 stderr_msg resw 4 ; stores char
 stderr_eno resw 4 ; stores 64-bit int
 stdout_msg resw 4 ; stores char
@@ -306,8 +311,9 @@ section .data
 recursiveDepth db 0
 ;--- other ---
 
-bs_str9: db "Not implemented", 0xa, 0
-bs_str34: db "file already exists", 0
-bs_str42: db "strlen: not implemented", 0xa, 0
+bs_str0: db "", 0xa, 0
+bs_str8: db "Not implemented", 0xa, 0
+bs_str33: db "file already exists", 0
+bs_str41: db "strlen: not implemented", 0xa, 0
 errno dd 0
 warno dd 0

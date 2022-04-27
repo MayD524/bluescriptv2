@@ -79,8 +79,8 @@ class compiler:
         }
         
         ## for logic control (so we can do our checks)
-        self.inLogicDecl:bool          = False
-        self.logicEndLabel:str|None    = None
+        self.inLogicDecl:bool                = False
+        self.logicEndLabel:list[str]    = []
         
         self.totalMemory = 0
     
@@ -189,7 +189,6 @@ class compiler:
         return f"bs_str{self.global_token_id}"
 
     def checkVariableOperations(self, varName:str, value:str) -> None:
-        print(f"{varName} = {value}")
         ext = self.getExtention(varName)
         
         if not ext:
@@ -204,10 +203,11 @@ class compiler:
     
     def compile_blockLine(self, name:str, line:list[str], lineNo:int=0) -> bool:
         if line[0] != 13 and self.inLogicDecl:
-            self.inLogicDecl = False
-            self.compiledASM[".text"].append(f"{self.logicEndLabel}:\n")
+            self.compiledASM[".text"].append(f"{self.logicEndLabel[-1]}:\n")
+            self.logicEndLabel.pop()
+            self.inLogicDecl = False if len(self.logicEndLabel) == 0 else True
         elif line[0] == 13:
-            line = line[1:]
+            line = line[1 + len(self.logicEndLabel) - 1:]
         hasReturned     = False
         needReturnValue = False ## for declaring variables that require a return value
         returnVarName   = ""
@@ -246,7 +246,6 @@ class compiler:
                         incToken = 4
                     
                     if mode == 12: ## assign
-                        print(f"assigning {value} to {varName}")
                         size = -1
                         if '[' in varName and ']' in varName :
                             varName, size = varName.split("[")
@@ -260,14 +259,11 @@ class compiler:
                             self.package[ext][varName] = vardatacopy
                             self.package[ext][varName][0] = dType
                         if dType != "BS_STRING_TOKEN_AHOY":
-                            #pprint(self.package[ext])
                             vsize = -1 if '[' not in value and ']' not in value else int(value.split('[')[1].replace(']',''))
                             if vsize != -1:
                                 value = value.split('[')[0].replace(']','')
                                 dType = self.typeOf(value)
-                            #print(self.package[ext][varName])
                             self.package[ext][varName] = [self.typeOf(value), value if ext != "arrays" else self.package[ext][varName][1], False, size] if len(self.package[ext][varName]) == 2 else self.package[ext][varName]
-                            print(self.package[ext][varName])
                             if self.isVariable(value):
                                 value = f"[{value}]" if vsize == -1 else f"[{value}+{vsize}*8]"
                             dType = self.typeOf(value.replace("[", "").replace("]", ""))
@@ -275,8 +271,6 @@ class compiler:
                                 if size != -1 and ext != "arrays": ## make an array
                                     dt = [x for x in line[token_no+3:] if x not in TOKEN_TYPES]
                                     dt = len(dt) if isinstance(dt, str) or isinstance(dt, list) else dt
-                                    print(size)
-                                    print(line)
                                     
                                     if dt < size:
                                         for _ in range(size - dt):
@@ -300,7 +294,6 @@ class compiler:
                                     self.package[ext][varName][0] = dType
                                     self.package[ext][varName][2] = True
                                     self.package[ext][varName][1] = value if ext != "arrays" else self.package[ext][varName][1]
-                                    print(self.package[ext][varName])
                                     self.package[ext][varName][3] = size
                                     token_no += incToken
                                     continue
@@ -337,7 +330,6 @@ class compiler:
                     
                     match mode: ## for math
                         case 10: ## add
-                            print(f"add = {varName} {mode} {dType} {value}")
                             voffset = self.getOffset(varName)
                             if voffset != -1:
                                 varName = varName.split('[')[0]
@@ -354,7 +346,6 @@ class compiler:
                             self.compiledASM[".text"].append(f"add rax, {value}\nmov {varName}, rax")
                         
                         case 8: ## mul
-                            print(f"mul = {varName} {mode} {dType} {value}")
                             voffset = self.getOffset(varName)
                             if voffset != -1:
                                 varName = varName.split('[')[0]
@@ -373,7 +364,6 @@ class compiler:
                             self.compiledASM[".text"].append(f"mov {varName}, rax")
                     
                         case 11: ## div
-                            print(f"div = {varName} {mode} {dType} {value}")
                             voffset = self.getOffset(varName)
                             if voffset != -1:
                                 varName = varName.split('[')[0]
@@ -391,7 +381,6 @@ class compiler:
                             self.compiledASM[".text"].append(f"mov rdx, 0\nmov rax, {varName}\nmov rcx, {value}\ndiv rcx\nmov {varName}, rax")
                         
                         case 9: ## sub
-                            print(f"sub = {varName} {mode} {dType} {value}")
                             voffset = self.getOffset(varName)
                             if voffset != -1:
                                 varName = varName.split('[')[0]
@@ -458,7 +447,6 @@ class compiler:
                         argValue, argType = argType, argValue
                     
                     if self.typeOf(argValue) != functionData["args"][arg_ptr-arg_ptr//2] and functionData["args"][arg_ptr-arg_ptr//2] not in ["any", "ptr", "void"] :
-                        print(line)
                         raise Exception(f"function {nextFun} takes {functionData['args'][arg_ptr-arg_ptr//2]} as argument {arg_ptr}, but got {self.typeOf(argValue)}. variable: '{argValue}'")
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
@@ -491,7 +479,6 @@ class compiler:
             elif isinstance(token, int):
                 match token:
                     case 0: ## if:
-                        self.logicEndLabel = f".bs_logic_end{self.global_token_id}"
                         cmp1 = line[token_no+2]
                         mode = line[token_no+3]
                         cmp2 = line[token_no+5]
@@ -516,11 +503,12 @@ class compiler:
                             cmp2 = f"[{strName}]"
                         
                         
+                        self.logicEndLabel.append(f".bs_logic_end{self.global_token_id}")
+                        self.inLogicDecl   = True
                         ## move cmp1 to rax and cmp2 to rdx
                         self.compiledASM[".text"].append(f"mov rax, {cmp1}\nmov rdx, {cmp2}")
-                        self.compiledASM[".text"].append(f"cmp rax, rdx\n{mode} {self.logicEndLabel}")
-                        self.inLogicDecl   = True
-                        self.logicEndLabel = f".bs_logic_end{self.global_token_id}"
+                        self.compiledASM[".text"].append(f"cmp rax, rdx\n{mode} {self.logicEndLabel[-1]}")
+                        
                     ## TODO: else statements (maybe?)
                     #case 1: ## else:
                     #    self.logicEndLabel = f"bs_logic_end{self.global_token_id}"
@@ -551,7 +539,6 @@ class compiler:
                         
                         if token_no + 1 > len(line):
                             raise Exception(f"return must have a value")
-                        #print(f"{name}:{lineNo} >> return type: {line}")
                         retValue = line[token_no+2]
                         #if (retType == "int" and not retValue.isnumeric()) and (retType != self.typeOf(retValue)):
                         #    raise Exception(f"The block {name} does not return {retType} but {self.typeOf(retValue)}.")
@@ -599,8 +586,6 @@ class compiler:
                 args = self.package["blocks"][block]["tokens"][0]
                 args = [arg for arg in args if arg != "BS_VARIABLE_TOKEN"]
                 ## remove BS_VARIABLE_TOKEN from args
-                #print(f"args: {args} {self.package['blocks'][block]['args']}")
-                #print(f"argc: {len(args)} {self.package['blocks'][block]['argc']}")
                 if len(args) > self.package["blocks"][block]["argc"]:
                     raise Exception(f"too many arguments for {block}")
                 elif len(args) < self.package["blocks"][block]["argc"]:
@@ -660,8 +645,6 @@ class compiler:
             self.compiledASM[".rodata"].append(f"{constant} dd {self.package['constants'][constant][1]}")
     
     def compile(self) -> None:
-        #print("\n\n ---- PACKAGE ----")
-        #pprint(self.package)
         print("\n\n ---- Compiling... ----")
         self.compileBlock()
         self.compileConstants()
@@ -674,15 +657,12 @@ class compiler:
             if var not in self.compiledASM['.bss']:
                 self.allocSpace(var, self.package["variables"][var][0])
         print("\n\n------ Compiled ASM ------")
-        pprint(self.compiledASM)
-        
         
         ## now to join the sections
         includes = '\n'.join([f'%include "{f}"' for f in self.package["includedFiles"] if f.endswith(".asm") or f.endswith('.s')])
         externs = '\n'.join([f'extern {f}' for f in self.package["externs"]])
         compiled = f"global {FUNCTION_MAIN_NAME} ; the start we expect\n{includes}\n{externs}\n"
-        #self.compiledASM[".data"] = list(set(self.compiledASM[".data"]))
-        #self.compiledASM[".bss"] = list(set(self.compiledASM[".bss"]))
+
         for section in self.compiledASM:
             if self.compiledASM[section] != []:
                 compiled += f"\nsection {section}\n"

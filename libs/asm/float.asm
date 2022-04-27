@@ -1,5 +1,5 @@
 section .data
-    bsFloatDecimalPoint: db "."
+    bsFloatDecimalPoint: db ".", 0
 
 section .text
 %define __BS_FLOAT_HEAD__ 0xfc
@@ -79,41 +79,64 @@ bs_fiSet:
     mov [rax+2*8], rsi
     ret
 
-bs_fiMul:
-    push rax
-    call bs_isFloat
-    mov r8, rax
-    pop rax
-    cmp r8, 1
-    jne .notFloat
-    imul [rax+1*8], rdi
-
-    .notFloat:
-    mov rax, 1
+bs_fSize:
+    ; float in rax 
+    mov rbx, [rax+1*8]
+    mov rcx, [rax+2*8]
+    mov r8, 1
+    .szLoop:
+        mov rax, 10
+        imul r8, rax
+        cmp rcx, r8
+        jg .szLoop
+    mov rax, r8
     ret
+
+bs_fiMul:
+    ; float in rax
+    ; int in rdi
+    ; [rax+1*8] is the whole number
+    ; [rax+2*8] is the decimal
+    mov rbx, [rax+1*8]
+    mov rcx, [rax+2*8]
+
+    ; get length of decimal ([rax+2*8])
+    push rax
+    push rcx
+    call bs_fSize
+    mov r8, rax
+    pop rcx
+    pop rax
+
+    imul rbx, rdi
+    imul rcx, rdi
+
+    ; if rcx is greater than 100/100, then we need to add 1 to rbx
+    .checkCarry:
+        cmp rcx, r8
+        jb .noAdd
+        add rbx, 1
+        sub rcx, r8
+        jmp .checkCarry
+
+    .noAdd:
+    mov [rax+1*8], rbx
+    mov [rax+2*8], rcx
+    ret
+
 
 bs_fiAdd:
     ; float in rax
     ; int | float in rdi
-    push rax
-    call bs_isFloat
-    mov r8, rax
-    pop rax
-    cmp r8, 1
-    jne .notFloat
-
     add [rax+1*8], rdi
-    ret
-
-    .notFloat:
-    mov rax, 1
     ret
 
 bs_stdoutf:
     ; float in rax
     mov r8, [rax+1*8]
     mov r9, [rax+2*8]
-
+    ; remove the negative sign from r9
+    
     mov rax, r8
     call stdout_i
 
@@ -122,4 +145,8 @@ bs_stdoutf:
 
     mov rax, r9
     call stdout_i
+
+    mov rax, newLine
+    call stdout
+
     ret

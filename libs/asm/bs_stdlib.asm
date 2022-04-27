@@ -53,6 +53,7 @@ bs_exit:
 
 bluescript2_numeric_print:
     ; number is in rax
+    ; use newLine = 1 to print newline
     ; print the number
     ; check if the number is negative
     mov rcx, digitSpace
@@ -66,7 +67,8 @@ bluescript2_numeric_print:
     mpopa
 
     .isPos:
-    mov rbx, 10 
+    
+    xor rbx, rbx ; zero out rbx
     mov rdi, 1
     mov [rcx], rbx
     inc rcx
