@@ -1,0 +1,31 @@
+#use libs/asm/float.asm
+
+block bsfloat int int -> float
+    whole decimal 
+    pr = bs_makeFloat
+    bs_fiSet pr whole decimal
+    return pr
+end
+
+block fimul ptr int -> float
+    pr val
+    pr = bs_fiMul pr val
+    return pr
+end
+
+block fiadd float int -> float
+    pr val
+    pr = bs_fiAdd pr val
+    return pr
+end
+
+block fisub float int -> float
+    pr val
+    pr = bs_fiSub pr val
+    return pr
+end
+
+block stdout_f float -> void
+    pr
+    bs_stdoutf pr
+end

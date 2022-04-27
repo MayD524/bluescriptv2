@@ -1,6 +1,6 @@
 from pprint import pprint
 import os
-from sys import argv
+
 IS_DEBUG = True
 name = "posix" if IS_DEBUG else os.name
 
@@ -184,8 +184,8 @@ class compiler:
         else:
             bs_str += "\"" + value + "\""
         
-
-        self.compiledASM[".data"].append(f"{bs_str}, 0")
+        if f"bs_str{self.global_token_id}" not in self.compiledASM[".data"]:
+            self.compiledASM[".data"].append(f"{bs_str}, 0")
         return f"bs_str{self.global_token_id}"
 
     def checkVariableOperations(self, varName:str, value:str) -> None:
@@ -224,7 +224,7 @@ class compiler:
                 ext = self.getExtention(varName if '[' not in varName else varName.split("[")[0])
                 if not ext: raise Exception(f"variable {varName} not found")
                 if len(line) > token_no+2:
-                    
+                    assert len(line) != token_no+3, f"line {lineNo} has no value for variable {varName}, '{line}'"
                     incToken = 3
                     mode     = line[token_no+2]
                     dType    = line[token_no+3]

@@ -2,13 +2,13 @@
 
 const int BS_ENDOF_LIST 0xfffffff
 
-block List int -> int
+block List int -> ptr
     size
     pr = bs_makeList size
     return pr
 end
 
-block li_insert int int int -> void
+block li_insert ptr int int -> void
     pr value index
     size = li_size pr
     if index > size
@@ -20,27 +20,27 @@ block li_insert int int int -> void
     bs_insert pr value index
 end
 
-block li_get int int -> int
+block li_get ptr int -> int
     pr index
     ## TODO: check if index is valid
     got = bs_get pr index
     return got
 end
 
-block li_remove int int -> void
+block li_remove ptr int -> void
     pr index
     ## TODO: check if index is valid
     bs_remove pr index
 end
 
-block li_size int -> int
+block li_size ptr -> int
     pr
     sz = bs_length pr
     sz / 8
     return sz
 end
 
-block displayList int -> void
+block displayList pre -> void
     pr
     index = 0
     size = li_size pr

@@ -1,20 +1,24 @@
 #use libs/asm/bs_math.asm
 
-block power int int -> int
+block pow int int -> int
     base pwr
     if pwr == 0
     | return 1
+
     if pwr == 1
     | return base
-    base * base
+
     if pwr == 2
-    | return base * base
+    | base * base
+    | return base
+
     pwr - 1
-    label powerTop
-        base * base
-        if pwr != 0
-        | pwr - 1
-        | goto powerTop
+    save = base
+    stdout "\n"
+    do
+        base * save
+        pwr - 1
+    while pwr != 0
     return base
 end
 

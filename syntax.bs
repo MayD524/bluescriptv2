@@ -1,17 +1,9 @@
 #include libs/stdlib.bs
 #include libs/posix.bs
-
-#use libs/asm/float.asm
-
-block funny ptr -> void
-    ptr
-    stdout_i ptr
-    stdout "\n" 
-end
-
+#include libs/float.bs
+#include libs/math.bs
 
 block main void -> int
-    x = 10
-    funny x
+    
     return 0
 end

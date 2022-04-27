@@ -127,9 +127,16 @@ bs_fiMul:
 
 bs_fiAdd:
     ; float in rax
-    ; int | float in rdi
+    ; int in rdi
     add [rax+1*8], rdi
     ret
+
+bs_fiSub:
+    ; float in rax
+    ; int in rdi
+    sub [rax+1*8], rdi
+    ret
+
 
 bs_stdoutf:
     ; float in rax

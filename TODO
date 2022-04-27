@@ -56,7 +56,6 @@ Todo:
         - [done] intro of ';' operator (line extension)
         - 'val' if 'statement' 'val2'
             (works like python but without else)
-    - ptrs
     - c integration
         # this will make my life with stdlib so much easier
         # no writing malloc for me :)
@@ -69,8 +68,6 @@ Todo:
         - floats
         - sign vs unsign print
         - shorts/longs
-    - nesting
-        - nested ifs
     - multi-returns
     - stack movements
 
@@ -79,6 +76,8 @@ Notes:
         the C-Malloc and C-Free later change
         to custom solution (just don't wanna wait
         on that one part)
+    - nesting
+        - nested ifs
 
 Maybe:
     - fix token consistency issue
@@ -87,6 +86,9 @@ Maybe:
 Bugs:
 
 Done:
+    - ptrs
+        - pointers compile to ints
+    - do while 
     - set value in arrays 
         - ie. a[0] = <value> 
             (currently does not work)

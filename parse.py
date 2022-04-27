@@ -1,4 +1,5 @@
 from pprint import pprint
+from re import L
 
 BS_GENERIC_TYPES = [
     #"char",
@@ -7,6 +8,13 @@ BS_GENERIC_TYPES = [
     "null",
 #    "ptr"
     "float", ## TODO: Add support for float
+]
+
+BS_MATH_OPERS = [
+    "+",
+    "-",
+    "*",
+    "/"
 ]
 
 BS_TOKEN_TYPES = [
@@ -93,6 +101,7 @@ class parser:
                 self.handleIncludes()
                 self.included_files.append(fileName)
                 break
+
             ## allow for using assembly includes
             elif line.startswith("#use"):
                 filename = line.split(" ", 1)[1].strip()
@@ -150,7 +159,8 @@ class parser:
                 whileCheck = True
                 whileBlkName.append(f"bsDo_{line_no}")
                 self.combined_data[line_no] = line
-                
+            
+
             elif line.startswith("while"):
                 assert whileCheck, "While without do"
                 
@@ -158,14 +168,15 @@ class parser:
                 self.combined_data[line_no] = f"if {logic}"
                 self.combined_data.insert(line_no + 1, f"| goto {whileBlkName[-1]}")
                 
-                
                 whileBlkName.pop()
                 if len(whileBlkName) == 0:
                     whileCheck = False
-                
-                
+            
+            elif line == "continue":
+                assert whileCheck, "Continue without while"
+                self.combined_data[line_no] = f"goto {whileBlkName[-1]}"
+
             line_no += 1
-                
         
         self.combined_data = [line.split("#",1)[0].strip() for line in self.combined_data]
         ## remove empty lines
@@ -185,7 +196,12 @@ class parser:
                 _, blockName, argc = line.split(" ", 2)
                 argc, retType = argc.split("->", 1)
                 args = argc.split(" ")
-                args = [arg.strip() if arg != "ptr" else "int" for arg in args if arg != ""]
+                for i in range(len(args)):
+                    args[i] = args[i].strip()
+                    if args[i] == "ptr" or args[i] == "float":
+                        args[i] = "int"
+                    if args[i] == "":
+                        args.pop(i)
                 argc = len(args)
                 
             elif line.startswith("const"):
@@ -207,11 +223,18 @@ class parser:
             ## find the next end 
             next_end = self.combined_data[lineNo:].index("end")
             
+            retType = retType.strip()
+            if retType == "float":
+                retType = "int"
+                
+            elif retType == "ptr":
+                retType = "int"
+
             ## add the block
             self.blocks[blockName] = {
                 "args": args,
                 "argc": argc,
-                "retType": retType.strip(),
+                "retType": retType,
                 "local_variables": [],
                 "lines": self.combined_data[lineNo+1:lineNo+next_end],
                 "lineRange": (lineNo, lineNo+next_end)
