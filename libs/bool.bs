@@ -1,7 +1,4 @@
 
-const int true 1
-const int false 0
-
 block bsnot int -> int
     ina
     if ina == true

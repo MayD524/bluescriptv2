@@ -20,6 +20,19 @@ block li_insert ptr int int -> void
     bs_insert pr value index
 end
 
+block li_contains ptr int -> bool
+    pr value
+    size = li_size pr
+    index = 0
+    do
+        x = li_get pr index
+        if x == value
+        | return true
+        index + 1
+    while index < size
+    return false
+end
+
 block li_get ptr int -> int
     pr index
     ## TODO: check if index is valid
@@ -38,20 +51,4 @@ block li_size ptr -> int
     sz = bs_length pr
     sz / 8
     return sz
-end
-
-block displayList pre -> void
-    pr
-    index = 0
-    size = li_size pr
-    stdout "hello world!\n"
-    label top
-        if index == size
-        | stdout_i index
-        | return
-        x = li_get pr index
-        stdout_i x
-        index + 1
-        goto top
-    return
 end

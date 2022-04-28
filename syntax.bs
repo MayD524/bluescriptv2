@@ -1,9 +1,9 @@
 #include libs/stdlib.bs
 #include libs/posix.bs
-#include libs/float.bs
-#include libs/math.bs
+#include libs/set.bs
 
 block main void -> int
-    
+    stdout_i argc
+    stdout "\n"
     return 0
 end

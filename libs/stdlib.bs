@@ -1,10 +1,20 @@
 #use libs/asm/bs_stdlib.asm
+
+## just some logic stuff
+const int true 1
+const int false 0
+
+## general purpose stuff
 const int NULL 0
+
+## some useful constants
 const int STDIN  0
 const int STDOUT 1
 const int STDERR 2
 
 const str newLine "\n"
+
+## for error handling
 global int errno 0
 global int warno 0
 
@@ -19,6 +29,12 @@ block stderr str int -> void
     if warno > 2
     | exit 1
     return
+end
+
+## just an stderr wrapper (just looks nicer)
+block raise str -> void
+    msg
+    stderr msg 1
 end
 
 block stdout str -> void

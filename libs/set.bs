@@ -1,0 +1,47 @@
+## list with extra steps
+
+#include libs/list.bs
+
+block Set int -> ptr
+    size
+    pr = List size
+    return pr
+end
+
+block set.insert ptr int int -> void
+    pr value index
+    exists = li_contains pr value
+    if exists == true
+    | return
+    li_insert pr value index
+end
+
+block set.remove ptr int -> void
+    pr value
+    exists = li_contains pr value
+    if exists == true
+    | li_remove pr value
+end
+
+block set.contains ptr int -> bool
+    pr value
+    exists = li_contains pr value
+    return exists
+end
+
+block set.size ptr -> int
+    pr
+    size = li_size pr
+    return size
+end
+
+block set.get ptr int -> int
+    pr index
+    value = li_get pr index
+    return value
+end
+
+block set.set ptr int int -> void
+    pr value index
+    li_insert pr value index
+end

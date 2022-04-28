@@ -115,8 +115,7 @@ class parser:
                 for line in functionNames:
                     if line.startswith(";"):
                         continue
-                    elif ":" in line and not "." in line:
-                        
+                    elif ":" in line and not line.startswith('.'):
                         self.livingFunctions.append(line.strip().replace(":", ""))
                         
             elif line.startswith("#extern"):
@@ -184,6 +183,17 @@ class parser:
         print("\n\n-- COMBINED DATA --")
         pprint(self.combined_data)
     
+    def setType(self, typeName:str) -> str:
+        if typeName == "ptr":
+            return "int"
+        elif typeName == "byte":
+            return "int"
+        elif typeName == "bool":
+            return "int"
+        elif typeName == "int":
+            return "int"
+        return typeName
+    
     def blockify(self) -> None:
         """
             Turn our source code into blocks
@@ -198,8 +208,7 @@ class parser:
                 args = argc.split(" ")
                 for i in range(len(args)):
                     args[i] = args[i].strip()
-                    if args[i] == "ptr" or args[i] == "float":
-                        args[i] = "int"
+                    args[i] = self.setType(args[i])
                     if args[i] == "":
                         args.pop(i)
                 argc = len(args)
@@ -211,24 +220,20 @@ class parser:
                 continue 
             elif line.startswith("array"):
                 _, dType, varName, size = line.split(" ", 3)
-                self.arrays[varName] = [dType, size]
+                self.arrays[varName] = [self.setType(dType), size]
                 lineNo += 1
                 continue
             elif line.startswith("global"):
             
                 _, dType, varName, value = line.split(" ", 3)
-                self.globalVariables[varName] = [dType, value]
+                
+                self.globalVariables[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue
             ## find the next end 
             next_end = self.combined_data[lineNo:].index("end")
             
-            retType = retType.strip()
-            if retType == "float":
-                retType = "int"
-                
-            elif retType == "ptr":
-                retType = "int"
+            retType = self.setType(retType.strip())
 
             ## add the block
             self.blocks[blockName] = {

@@ -1,5 +1,6 @@
 from pprint import pprint
 import os
+import sys
 
 IS_DEBUG = True
 name = "posix" if IS_DEBUG else os.name
@@ -36,10 +37,10 @@ TOKEN_TYPES = [
 ## TODO: file this!!!
 ## small issue: only je/jne works correctly :,(
 JMP_MODES = {
-    14 : "jl",
-    15 : "jle",
+    14 : "jle",
+    15 : "jge",
     16 : "jg",
-    17 : "jge",
+    17 : "jl",
     18 : "je",
     19 : "jne"
 }
@@ -67,12 +68,15 @@ class compiler:
         self.package = packagedData
         self.filePtr = 0
         self.global_token_id = 0
+        
+        self.package["variables"]["main_argc"] = ["int", "argc", True, -1]
+        self.package["variables"]["main_argv"] = ["int", "argv", True, -1]
 
         self.compiledASM:dict[str,list[str]] = {
             ".text":   [],  ## code
             ".rodata": [],  ## read-only data
             ".bss":    [
-                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- recursion ---\nrecursiveStack resw 100\n;--- args ---\nargc resw 4\nargv resw 10\n;--- other ---\n"],  ## uninitialized data
+                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- args ---\nmain_argc resw 4\nmain_argv resw 10\n;--- other ---\n"],  ## uninitialized data
             ".data":   [
                 ";--- for recursion ---\nrecursiveDepth db 0\n;--- other ---\n",
             ]   ## initialized data
@@ -81,6 +85,9 @@ class compiler:
         ## for logic control (so we can do our checks)
         self.inLogicDecl:bool                = False
         self.logicEndLabel:list[str]    = []
+        
+        self.currentFunName:str = None
+        self.currentLineNo:int  = 0
         
         self.totalMemory = 0
     
@@ -178,6 +185,10 @@ class compiler:
         if ( name := self.strExists(value)) is not None:
             return name
             
+        if useName and self.strExists(useName) is not None:
+            return useName
+        elif useName is None and self.strExists(f"bs_str{self.global_token_id}") is not None:
+            self.global_token_id += 1
         bs_str = f"bs_str{self.global_token_id}: db " if useName is None else f"{useName}: db "
         if "\\n" in value:
             bs_str += "\"" + value.replace("\\n","") + "\", 0xa"
@@ -192,14 +203,13 @@ class compiler:
         ext = self.getExtention(varName)
         
         if not ext:
-            raise Exception(f"variable {varName} not found")
+            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} not found")
         elif ext == "constants":
-            raise Exception(f"variable {varName} is constant")
+            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} is constant")
         elif self.typeOf(varName) != "int":
-            
-            raise Exception(f"variable {varName} is not an integer, but a {self.typeOf(varName)}")
+            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} is not an integer, but a {self.typeOf(varName)}")
         elif self.typeOf(value) != "int":
-            raise Exception(f"variable '{value}' is not an integer, but a {self.typeOf(value)}")
+            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable '{value}' is not an integer, but a {self.typeOf(value)}")
     
     def compile_blockLine(self, name:str, line:list[str], lineNo:int=0) -> bool:
         if line[0] != 13 and self.inLogicDecl:
@@ -267,6 +277,7 @@ class compiler:
                             if self.isVariable(value):
                                 value = f"[{value}]" if vsize == -1 else f"[{value}+{vsize}*8]"
                             dType = self.typeOf(value.replace("[", "").replace("]", ""))
+                            
                             if not self.package[ext][varName][2]:
                                 if size != -1 and ext != "arrays": ## make an array
                                     dt = [x for x in line[token_no+3:] if x not in TOKEN_TYPES]
@@ -290,7 +301,6 @@ class compiler:
                                     
                                     if len(self.package[ext][varName]) < 2 or not self.package[ext][varName][2]:
                                         self.allocSpace(varName, dType)
-                                    
                                     self.package[ext][varName][0] = dType
                                     self.package[ext][varName][2] = True
                                     self.package[ext][varName][1] = value if ext != "arrays" else self.package[ext][varName][1]
@@ -315,7 +325,7 @@ class compiler:
                             self.package[ext][varName] = [self.typeOf(value), value, False, len(value)]
                             if not self.package[ext][varName][2]:
                                 if size == -1 and not self.package[ext][varName][2]:
-                                    self.allocSpace(varName, "str", len(value) + 1)
+                                    self.allocSpace(varName, self.typeOf(value), len(value) + 1)
                                 else:
                                     data = ','.join([str(i) for i in range(size)])
                                     self.compiledASM[".data"].append(f"{varName} dq {data}")
@@ -371,7 +381,6 @@ class compiler:
                             if isinstance(voffset, str):
                                 self.compiledASM[".text"].append(f"mov r10, [{voffset}]")
                                 voffset = "r10"
-
                             self.checkVariableOperations(varName, value)
                             
                             ## we can add to a variable
@@ -399,6 +408,7 @@ class compiler:
                     token_no += incToken
                 #    ## .bss gen
                 #    self.allocSpace(varName, self.typeOf(varName))
+                
             elif token == "BS_FUNCTION_TOKEN":
                 nextFun = line[token_no+1]
                 loc_args = line[token_no+2:]
@@ -419,10 +429,11 @@ class compiler:
                         regIndex += 1
                     self.compiledASM['.text'].append(f"call {nextFun}")
                     if needReturnValue:
-                        self.package[self.getExtention(returnVarName)][returnVarName] = self.package["blocks"][name]["retType"]
+                        self.package[self.getExtention(returnVarName)][returnVarName][0] = self.package["blocks"][name]["retType"]
                         self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                         needReturnValue = False
                         returnVarName   = ""
+                        
                     break
                 
                 functionData = self.package["blocks"][nextFun]
@@ -447,7 +458,7 @@ class compiler:
                         argValue, argType = argType, argValue
                     
                     if self.typeOf(argValue) != functionData["args"][arg_ptr-arg_ptr//2] and functionData["args"][arg_ptr-arg_ptr//2] not in ["any", "ptr", "void"] :
-                        raise Exception(f"function {nextFun} takes {functionData['args'][arg_ptr-arg_ptr//2]} as argument {arg_ptr}, but got {self.typeOf(argValue)}. variable: '{argValue}'")
+                        raise Exception(f"{name}:{lineNo} function {nextFun} takes {functionData['args'][arg_ptr-arg_ptr//2]} as argument {arg_ptr}, but got {self.typeOf(argValue)}. variable: '{argValue}'")
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         strName = self.allocStr(argValue)
@@ -546,6 +557,7 @@ class compiler:
                         if name == "main":
                             self.compiledASM[".text"].append(sys_exit(retValue))
                         else:
+                            ext = self.getExtention(retValue)
                             if retValue not in self.package["constants"] or retValue not in self.package[ext]:
                                 self.compiledASM[".text"].append(f"mov rax, {retValue if not self.isVariable(retValue) else f'[{retValue}]'} ; return value in rax")
                             else:
@@ -553,7 +565,7 @@ class compiler:
                                 if "\\n" in retValue:
                                     retValue.replace("\\n")
                                     retvalue += ", 10"
-                                self.compiledASM[".rodata"].append(f"bs_str{self.global_token_id}: .ascii {retValue}, 0")
+                                self.compiledASM[".rodata"].append(f"bs_str{self.global_token_id} dd {retValue}, 0")
                                 
                             #self.compiledASM[".text"].append(f"mov rax, {retValue} ; return value in rax")
                         self.compiledASM[".text"].append("ret")
@@ -571,18 +583,19 @@ class compiler:
 
     def compileBlock(self) -> None:
         for block in self.package["blocks"]:
+            self.currentFunName = block
             hasReturned = False
             requireReturn = False if self.package["blocks"][block]["retType"] == "void" else True
             
             self.compiledASM[".text"].append(f"{block}:" if block != "main" else FUNCTION_MAIN_NAME)
             if block == "main" and self.package["blocks"][block]["retType"] != "int":
                 raise Exception("main function must return int")
-            
+
             if block == "main":
-                self.compiledASM[".text"].append(f"pop rax\nmov [argc], rax\npop rax\nmov [argv], rax\n")
+                self.compiledASM[".text"].append(f"mov [main_argc], rdi\nmov [main_argv], rsi\n")
 
             elif self.package["blocks"][block]["args"][0] != "void":
-                
+                assert len(self.package["blocks"][block]["tokens"]) > 0, f"{block} has no tokens"
                 args = self.package["blocks"][block]["tokens"][0]
                 args = [arg for arg in args if arg != "BS_VARIABLE_TOKEN"]
                 ## remove BS_VARIABLE_TOKEN from args
@@ -612,10 +625,17 @@ class compiler:
                 self.package["blocks"][block]["tokens"].pop(0)
                 
             for line_no, line in enumerate(self.package["blocks"][block]["tokens"]):
+                self.currentLineNo = line_no
                 if not hasReturned:
                     hasReturned = self.compile_blockLine(block, line, line_no)
                     continue
                 self.compile_blockLine(block, line)
+            if self.inLogicDecl:
+                for decl in self.logicEndLabel:
+                    self.compiledASM[".text"].append(f"{decl}:")
+                self.logicEndLabel = []
+                self.inLogicDecl = False
+            
             if requireReturn and not hasReturned:
                 raise Exception(f"{block} must return a value")
             elif not requireReturn and not hasReturned:
@@ -644,7 +664,32 @@ class compiler:
             
             self.compiledASM[".rodata"].append(f"{constant} dd {self.package['constants'][constant][1]}")
     
+    def removeFromSection(self, name:str, section:str) -> None:
+        if not any(name in alloc for alloc in self.compiledASM[section]): return
+
+        ## get index of name in .bss
+        index = [i for i, alloc in enumerate(self.compiledASM[section]) if name in alloc]
+        assert len(index) != 0, f"{name} is not in {section}"
+        self.compiledASM[section].pop(index[0])
+    
+    def varIsUsed(self, varName:str) -> bool:
+        for line in self.compiledASM[".text"]:
+            if varName in line:
+                return True
+        return False
+    
+    def removeUnusedVariables(self) -> str:
+        
+        varLookups = ["constants", "globals", "arrays", "variables"]
+        sections   = [".rodata"  , ".bss"   , ".data" , ".bss"]
+        for varLookup in varLookups:
+            for section in sections:
+                for var in self.package[varLookup]:
+                    if not self.varIsUsed(var):
+                        self.removeFromSection(var, section)
+            
     def compile(self) -> None:
+        pprint(self.package["livingFunctions"])
         print("\n\n ---- Compiling... ----")
         self.compileBlock()
         self.compileConstants()
@@ -662,13 +707,26 @@ class compiler:
         includes = '\n'.join([f'%include "{f}"' for f in self.package["includedFiles"] if f.endswith(".asm") or f.endswith('.s')])
         externs = '\n'.join([f'extern {f}' for f in self.package["externs"]])
         compiled = f"global {FUNCTION_MAIN_NAME} ; the start we expect\n{includes}\n{externs}\n"
-
+        self.removeUnusedVariables()
         for section in self.compiledASM:
             if self.compiledASM[section] != []:
                 compiled += f"\nsection {section}\n"
                 compiled += "\n".join(self.compiledASM[section])
                 compiled += "\n"
-                
+        
+        tmp = compiled
+        tmp = tmp.split("\n")
+        index = 0
+        while index < len(tmp):
+            if ";" in tmp[index] and "--comment" not in sys.argv:
+                tmp[index] = tmp[index].split(";", 1)[0]
+            if tmp[index].strip() == "":
+                tmp.pop(index)
+            else:
+                tmp[index] = tmp[index].strip()
+                index += 1
+        compiled = "\n".join(tmp)
+        
         with open(self.outFile, "w+") as writer:
             writer.write(compiled)
         
