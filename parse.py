@@ -82,6 +82,7 @@ class parser:
         self.headers        : list[str] = []
         self.livingFunctions: list[str] = []
         self.externs        : list[str] = []
+        self.calledFuncs    : list[str] = ["main"]
     
     def handleIncludes(self) -> None:
         ## find any line that starts with #include
@@ -215,7 +216,7 @@ class parser:
                 
             elif line.startswith("const"):
                 _, dType, varName, value = line.split(" ", 3)
-                self.constantValues[varName] = [dType, value]
+                self.constantValues[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue 
             elif line.startswith("array"):
@@ -334,6 +335,7 @@ class parser:
                             tokens[token_no] = BS_KEY_TOKENS[token]
                         elif token in self.livingFunctions:
                             tokens.insert(token_no, "BS_FUNCTION_TOKEN")
+                            self.calledFuncs.append(token)
                             skip = True
                         elif token.isnumeric() or token.startswith("0x") or token.startswith("0b") or token.startswith("0o") or (token.startswith('-') and token[1:].isnumeric()):
                             tokens.insert(token_no, "BS_INT_TOKEN")
@@ -368,6 +370,12 @@ class parser:
         pprint(self.blocks)
     
     def package(self) -> dict[str, dict]:
+        cp = self.blocks.copy()
+        for block in self.blocks:
+            if block not in self.calledFuncs:
+                cp.pop(block)
+        self.blocks = cp
+        
         return {
             "blocks": self.blocks,                   ## all block data
             "constants": self.constantValues,        ## all constant values

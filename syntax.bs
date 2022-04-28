@@ -1,9 +1,19 @@
 #include libs/stdlib.bs
 #include libs/posix.bs
-#include libs/set.bs
+#include libs/math.bs
+
+block isDivisible int int -> bool
+    a b
+    x = mod a b
+    if x == 0
+    | return true
+    return false
+end
 
 block main void -> int
-    stdout_i argc
-    stdout "\n"
+    x = isDivisible 10 5 ## returns true
+    y = isDivisible 10 6 ## returns false
+    println_i x
+    println_i y
     return 0
 end

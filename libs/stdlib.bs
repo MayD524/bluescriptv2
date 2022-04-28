@@ -1,8 +1,5 @@
 #use libs/asm/bs_stdlib.asm
-
-## just some logic stuff
-const int true 1
-const int false 0
+#include libs/bool.bs
 
 ## general purpose stuff
 const int NULL 0
@@ -11,8 +8,6 @@ const int NULL 0
 const int STDIN  0
 const int STDOUT 1
 const int STDERR 2
-
-const str newLine "\n"
 
 ## for error handling
 global int errno 0
@@ -51,6 +46,18 @@ end
 block stdout_i int -> void
     msg
     bluescript2_numeric_print msg
+end
+
+block println str -> void
+    msg
+    stdout msg
+    stdout "\n"
+end
+
+block println_i int -> void
+    msg
+    stdout_i msg
+    stdout "\n"
 end
 
 block exit int -> void

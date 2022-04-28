@@ -78,8 +78,7 @@ class compiler:
             ".bss":    [
                 ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- args ---\nmain_argc resw 4\nmain_argv resw 10\n;--- other ---\n"],  ## uninitialized data
             ".data":   [
-                ";--- for recursion ---\nrecursiveDepth db 0\n;--- other ---\n",
-            ]   ## initialized data
+            ]
         }
         
         ## for logic control (so we can do our checks)
@@ -682,13 +681,15 @@ class compiler:
         
         varLookups = ["constants", "globals", "arrays", "variables"]
         sections   = [".rodata"  , ".bss"   , ".data" , ".bss"]
+        preserve   = ["main_argc", "main_argv", "digitSpace", "digitSpacePos"]
         for varLookup in varLookups:
             for section in sections:
                 for var in self.package[varLookup]:
+                    if var in preserve: continue
                     if not self.varIsUsed(var):
                         self.removeFromSection(var, section)
             
-    def compile(self) -> None:
+    def compile(self) -> str:
         pprint(self.package["livingFunctions"])
         print("\n\n ---- Compiling... ----")
         self.compileBlock()
@@ -733,3 +734,4 @@ class compiler:
         print("\n\n------ Compiled Assembly ------")
         print(f"compiled to: {self.outFile}")
         print(f"nasm -felf64 {self.outFile} && gcc -no-pie {self.outFile.replace('.asm', '.o')} -o {self.outFile.replace('.asm', '.out')} && ./{self.outFile.replace('.asm', '.out')}")
+        return compiled
