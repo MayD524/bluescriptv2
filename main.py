@@ -3,7 +3,7 @@ import parse
 import sys
 import os
 
-__version__ = "0.0.2"
+__version__ = "0.0.5 (style heaven)"
 __os_name__ = "Windows" if os.name == "nt" else "Linux"
 
 def bs_main(fileName:str, output:str) -> None:
@@ -16,6 +16,7 @@ def bs_main(fileName:str, output:str) -> None:
     cs.compile()
 
 if __name__ == "__main__":
+    DEBUG = False
     print(f"BlueScript Compiler: v{__version__} ({__os_name__}) by May Draskovics")
     if len(sys.argv) < 2:
         sys.tracebacklimit = 0

@@ -5,26 +5,14 @@ import sys
 IS_DEBUG = True
 name = "posix" if IS_DEBUG else os.name
 
+FUNCTION_MAIN_NAME = "main:"
+
 if name == "nt":
     raise NotImplementedError("Windows is not supported")
 elif name == "posix":
     ## currently only tested on linux
     sys_exit   = lambda code : f"mov rax, 60\nmov rdi, {code}\nsyscall\n" if code.isnumeric() else f"mov rax, 60\nmov rdi, [{code}]\nsyscall\n"
     
-    def input_str() -> str:
-        return """
-            bluescript2_generic_input:  \n
-                ; rsi = buffer          \n
-                ; rdx = buffer size     \n
-                mov rax, 0              \n
-                mov rdi, 0              \n  
-                syscall                 \n
-                ret                     \n
-        """
-    
-    FUNCTION_MAIN_NAME = "main:"
-    
-    pass
 
 TOKEN_TYPES = [
     "BS_STRING_TOKEN_AHOY", 
@@ -34,8 +22,8 @@ TOKEN_TYPES = [
     "BS_FUNCTION_TOKEN"
 ]
 
-## TODO: file this!!!
-## small issue: only je/jne works correctly :,(
+DEBUG = False
+
 JMP_MODES = {
     14 : "jle",
     15 : "jge",
@@ -76,7 +64,7 @@ class compiler:
             ".text":   [],  ## code
             ".rodata": [],  ## read-only data
             ".bss":    [
-                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\n;--- args ---\nmain_argc resw 4\nmain_argv resw 10\n;--- other ---\n"],  ## uninitialized data
+                ";--- for printing numbers ---\ndigitSpace resb 100\ndigitSpacePos resb 8\nmain_argc resw 4\nmain_argv resw 10\n"],  ## uninitialized data
             ".data":   [
             ]
         }
@@ -92,14 +80,13 @@ class compiler:
     
     def isAlloced(self, name:str) -> bool:
         for bss in self.compiledASM[".bss"]:
-            if name in bss:
+            if any(name == x for x in bss.split(" ")):
                 return True
         return False
     
     def allocSpace(self, name:str, dtype:str, size:int=4) -> None:
         if name in self.package["arrays"]: return
         if self.isAlloced(name): return
-        
         if dtype == "int" or dtype == "BS_INT_TOKEN" and name not in self.package["arrays"]:
             self.compiledASM[".bss"].append(f"{name} resw {size} ; stores {size*16}-bit int")
         elif dtype == "ptr":
@@ -189,10 +176,30 @@ class compiler:
         elif useName is None and self.strExists(f"bs_str{self.global_token_id}") is not None:
             self.global_token_id += 1
         bs_str = f"bs_str{self.global_token_id}: db " if useName is None else f"{useName}: db "
-        if "\\n" in value:
-            bs_str += "\"" + value.replace("\\n","") + "\", 0xa"
-        else:
-            bs_str += "\"" + value + "\""
+        
+        endStr = ""
+        skip = False
+        ## find all escape characters
+        for i, char in enumerate(value):
+            if skip: skip = False; continue
+            
+            if char == "\\":
+                nxt = value[i+1]
+                skip = True
+                match nxt:
+                    case "n":
+                        endStr += ",0xa"
+                    case "e":
+                        endStr += ",27"
+                    case _:
+                        skip = False
+                continue
+                        
+            endStr += "," + str(ord(char))
+
+        if endStr[0] == ',':
+            endStr = endStr[1:]
+        bs_str += endStr
         
         if f"bs_str{self.global_token_id}" not in self.compiledASM[".data"]:
             self.compiledASM[".data"].append(f"{bs_str}, 0")
@@ -321,10 +328,10 @@ class compiler:
                             self.package[ext][varName][3] = size
                             self.package[ext][varName][0] = dType#'int' if dType == "BS_INT_TOKEN" else "str"
                         else:
-                            self.package[ext][varName] = [self.typeOf(value), value, False, len(value)]
+                            self.package[ext][varName] = ["str", value, False, len(value)]
                             if not self.package[ext][varName][2]:
                                 if size == -1 and not self.package[ext][varName][2]:
-                                    self.allocSpace(varName, self.typeOf(value), len(value) + 1)
+                                    self.allocSpace(varName, "str", len(value) + 1)
                                 else:
                                     data = ','.join([str(i) for i in range(size)])
                                     self.compiledASM[".data"].append(f"{varName} dq {data}")
@@ -404,6 +411,7 @@ class compiler:
                             value = value if not self.isVariable(value) else f"[{value}]"
                             varName = f"[{varName}]" if voffset == -1 else f"[{varName} + {voffset}*8]"
                             self.compiledASM[".text"].append(f"mov rax, {varName}\nmov rbx, {value}\nsub rax, rbx\nmov {varName}, rax")
+                    
                     token_no += incToken
                 #    ## .bss gen
                 #    self.allocSpace(varName, self.typeOf(varName))
@@ -594,7 +602,7 @@ class compiler:
                 self.compiledASM[".text"].append(f"mov [main_argc], rdi\nmov [main_argv], rsi\n")
 
             elif self.package["blocks"][block]["args"][0] != "void":
-                assert len(self.package["blocks"][block]["tokens"]) > 0, f"{block} has no tokens"
+                assert len(self.package["blocks"][block]["tokens"]) > 0, f"{block} has no tokens, this is most likely because you forgot to add an 'end' to the block."
                 args = self.package["blocks"][block]["tokens"][0]
                 args = [arg for arg in args if arg != "BS_VARIABLE_TOKEN"]
                 ## remove BS_VARIABLE_TOKEN from args
@@ -616,6 +624,7 @@ class compiler:
                         else:
                             raise Exception(f"size of '{size}' is not a number")
                     else:
+                        ## this allocates parameters for the function
                         self.allocSpace(arg, dtype)
                     self.package["variables"][arg] = [dtype, "function_argument"]
                     ## TODO: rework this (so we don't have string issues)
@@ -629,6 +638,7 @@ class compiler:
                     hasReturned = self.compile_blockLine(block, line, line_no)
                     continue
                 self.compile_blockLine(block, line)
+                
             if self.inLogicDecl:
                 for decl in self.logicEndLabel:
                     self.compiledASM[".text"].append(f"{decl}:")
@@ -637,6 +647,7 @@ class compiler:
             
             if requireReturn and not hasReturned:
                 raise Exception(f"{block} must return a value")
+            
             elif not requireReturn and not hasReturned:
                 self.compiledASM[".text"].append("ret")
     
@@ -690,18 +701,20 @@ class compiler:
                         self.removeFromSection(var, section)
             
     def compile(self) -> str:
-        pprint(self.package["livingFunctions"])
+        
+        if DEBUG: pprint(self.package["livingFunctions"])
         print("\n\n ---- Compiling... ----")
         self.compileBlock()
         self.compileConstants()
         self.compileArray()
         self.compileGlobals()
 
-        print("\n\n----- Variables -----")
-        pprint(self.package["variables"])
-        for var in self.package["variables"]:
-            if var not in self.compiledASM['.bss']:
-                self.allocSpace(var, self.package["variables"][var][0])
+        if DEBUG:
+            print("\n\n----- Variables -----")
+            pprint(self.package["variables"])
+            for var in self.package["variables"]:
+                if var not in self.compiledASM['.bss']:
+                    self.allocSpace(var, self.package["variables"][var][0])
         print("\n\n------ Compiled ASM ------")
         
         ## now to join the sections

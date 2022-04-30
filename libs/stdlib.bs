@@ -5,11 +5,14 @@
 const int NULL 0
 
 ## some useful constants
+const str UNIX_CLR_SCREEN "\x1b[2J"
+
 const int STDIN  0
 const int STDOUT 1
 const int STDERR 2
 
 ## for error handling
+global int stdinBuffSize 1024
 global int errno 0
 global int warno 0
 
@@ -35,6 +38,44 @@ end
 block stdout str -> void
     msg
     bluescript2_unix_print msg STDOUT
+end
+
+block clearScreen void -> void
+    stdout "\e[H\e[2J"
+end
+
+block atoi str -> int
+    intStr
+    ## derived from libs/asm/bs_stdlib.asm
+    in = bs_atoi intStr
+    return in
+end
+
+block putc char {
+    chr
+    bluescript2_unix_putc chr 1
+}
+
+## a sized prompt call (for input)
+block sprompt str int -> str
+    prmpt msgSize
+    stdout prmpt
+
+    theString = bluescript2_string_input msgSize
+    return theString
+end
+
+block prompt str -> str
+    prmpt
+    inp = sprompt prmpt stdinBuffSize
+    return inp
+end
+
+block iprompt str -> int
+    prmpt
+    dt = prompt prmpt
+    dti = atoi dt
+    return dti
 end
 
 ## here for legacy reasons (just in case i forget i removed it)

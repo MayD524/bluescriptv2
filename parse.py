@@ -1,5 +1,7 @@
+from pathlib import Path
 from pprint import pprint
-from re import L
+
+DEBUG = False
 
 BS_GENERIC_TYPES = [
     #"char",
@@ -90,6 +92,9 @@ class parser:
             if line.startswith("#include"):
                 ## get the file name
                 fileName = line.split(" ", 1)[1].strip()
+                if "std." in fileName:
+                    ## get current files path
+                    fileName = fileName.replace("std.", str(Path(__file__).parent.absolute()) + "/libs/") 
                 if fileName in self.included_files:
                     continue
                 ## get the file data
@@ -106,6 +111,8 @@ class parser:
             ## allow for using assembly includes
             elif line.startswith("#use"):
                 filename = line.split(" ", 1)[1].strip()
+                if "std." in filename:
+                    fileName = fileName.replace("std.", str(Path(__file__).parent.absolute()) + "/libs/") 
                 if filename in self.included_files:
                     continue
                 self.included_files.append(filename)
@@ -181,8 +188,9 @@ class parser:
         self.combined_data = [line.split("#",1)[0].strip() for line in self.combined_data]
         ## remove empty lines
         self.combined_data = [line for line in self.combined_data if line != "" and line != "\n"]
-        print("\n\n-- COMBINED DATA --")
-        pprint(self.combined_data)
+        if DEBUG:
+            print("\n\n-- COMBINED DATA --")
+            pprint(self.combined_data)
     
     def setType(self, typeName:str) -> str:
         if typeName == "ptr":
@@ -190,6 +198,8 @@ class parser:
         elif typeName == "byte":
             return "int"
         elif typeName == "bool":
+            return "int"
+        elif typeName == "char":
             return "int"
         elif typeName == "int":
             return "int"
@@ -203,15 +213,29 @@ class parser:
         lineNo = 0
         while lineNo < len(self.combined_data):
             line = self.combined_data[lineNo]
+            useSquiggly = False
             if line.startswith("block"):
-                _, blockName, argc = line.split(" ", 2)
-                argc, retType = argc.split("->", 1)
+                if "{" in line:
+                    line = line.replace("{", "")
+                    useSquiggly = True
+                _, blockName = line.split(" ", 1)
+                if " " in blockName:
+                    blockName, argc = blockName.split(" ", 1)
+                else:
+                    argc = "void -> void"
+                if "->" in argc:
+                    argc, retType = argc.split("->", 1)
+                else:
+                    retType = "void"
+                    argc = argc.strip()
                 args = argc.split(" ")
                 for i in range(len(args)):
-                    args[i] = args[i].strip()
+                    args[i] = args[i].replace(",", "").strip()
                     args[i] = self.setType(args[i])
                     if args[i] == "":
                         args.pop(i)
+                if len(args) == 0:
+                    args.append("void")
                 argc = len(args)
                 
             elif line.startswith("const"):
@@ -219,22 +243,22 @@ class parser:
                 self.constantValues[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue 
+            
             elif line.startswith("array"):
                 _, dType, varName, size = line.split(" ", 3)
                 self.arrays[varName] = [self.setType(dType), size]
                 lineNo += 1
                 continue
-            elif line.startswith("global"):
             
+            elif line.startswith("global"):
                 _, dType, varName, value = line.split(" ", 3)
-                
                 self.globalVariables[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue
-            ## find the next end 
-            next_end = self.combined_data[lineNo:].index("end")
             
-            retType = self.setType(retType.strip())
+            ## find the next end 
+            next_end = self.combined_data[lineNo:].index("end" if not useSquiggly else "}")
+            retType = self.setType(retType.strip()) 
 
             ## add the block
             self.blocks[blockName] = {
@@ -247,22 +271,23 @@ class parser:
             }
             self.livingFunctions.append(blockName)
             lineNo = lineNo + next_end + 1
-                
-        print("\n\n-- BLOCKS --")
-        pprint(self.blocks)
-        
-        print("\n\n-- CONSTANTS --")
-        pprint(self.constantValues)
-        
-        print("\n\n-- ARRAYS --")
-        pprint(self.arrays)
-        
-        print("\n\n-- GLOBALS --")
-        pprint(self.globalVariables)
+
+
+        if DEBUG:
+            print("\n\n-- BLOCKS --")
+            pprint(self.blocks)
+            
+            print("\n\n-- CONSTANTS --")
+            pprint(self.constantValues)
+            
+            print("\n\n-- ARRAYS --")
+            pprint(self.arrays)
+            
+            print("\n\n-- GLOBALS --")
+            pprint(self.globalVariables)
         
         self.tokenizeBlocks()
         
-        pprint(self.blocks["main"])
     
     def typeOf(self, token:str, blockName:str) -> str:
         if token in BS_KEY_TOKENS:
@@ -296,7 +321,7 @@ class parser:
             Tokenize the blocks
             and add them to the blocks
         """
-        print("\n\n-- TOKENIZING --")
+        if DEBUG: print("\n\n-- TOKENIZING --")
         for blockName, block in self.blocks.items():
             block["tokens"] = []
             for line in block["lines"]:
@@ -329,7 +354,12 @@ class parser:
                             strStart = token_no
                         
                         continue
-                        
+                    
+                    elif token.startswith("'"): ## char (convert to int)
+                        ## remove the '
+                        token = str(ord(token[1:-1]))
+                        tokens[token_no] = token
+                    
                     if not inStr:
                         if token in BS_KEY_TOKENS:
                             tokens[token_no] = BS_KEY_TOKENS[token]
@@ -349,7 +379,7 @@ class parser:
                                 self.variables[f"{blockName}_{token}"] = [self.typeOf(token, blockName), "unknown"]
                                 ## replace token with the variable name
                                 tokens[token_no+1] = f"{blockName}_{token}"
-                                print(f"{tokens[token_no+1]}")
+                                if DEBUG: print(f"{tokens[token_no+1]}")
                                 if f"{blockName}_{token}" not in self.blocks[blockName]["local_variables"]:
                                     self.blocks[blockName]["local_variables"].append(f"{blockName}_{token}")
                             skip = True
@@ -367,7 +397,7 @@ class parser:
                     self.blocks[blockName]["tokens"].append(tok[::-1])
                         
                     
-        pprint(self.blocks)
+        if DEBUG: pprint(self.blocks)
     
     def package(self) -> dict[str, dict]:
         cp = self.blocks.copy()

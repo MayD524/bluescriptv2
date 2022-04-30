@@ -2,40 +2,13 @@ global main:
 %include "libs/asm/bs_stdlib.asm"
 %include "libs/asm/posix.asm"
 %include "libs/asm/bs_fstream.asm"
-%include "libs/asm/bs_math.asm"
 %include "libs/asm/bs_string.asm"
 section .text
-isDivisible:
-mov [isDivisible_a], rax
-mov [isDivisible_b], rdi
-mov rax, [isDivisible_a]
-mov rdi, [isDivisible_b]
-call mod
-mov [isDivisible_x], rax
-mov rax, [isDivisible_x]
-mov rdx, 0
-cmp rax, rdx
-jne .bs_logic_end2
-mov rax, [true]
-ret
-.bs_logic_end2:
-mov rax, [false]
-ret
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
-mov rax, 10
-mov rdi, 5
-call isDivisible
-mov [main_x], rax
-mov rax, 10
-mov rdi, 6
-call isDivisible
-mov [main_y], rax
-mov rax, [main_x]
-call println_i
-mov rax, [main_y]
-call println_i
+lea rax, [bs_str0]
+call stdout
 mov rax, 60
 mov rdi, 0
 syscall
@@ -49,20 +22,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end14
+je .bs_logic_end2
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end14:
+.bs_logic_end2:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end17
+jle .bs_logic_end5
 mov rax, 1
 call exit
-.bs_logic_end17:
+.bs_logic_end5:
 ret
 ret
 stdout:
@@ -70,6 +43,31 @@ mov [stdout_msg], rax
 mov rax, [stdout_msg]
 mov rdi, [STDOUT]
 call bluescript2_unix_print
+ret
+atoi:
+mov [atoi_intStr], rax
+mov rax, [atoi_intStr]
+call bs_atoi
+mov [atoi_in], rax
+mov rax, [atoi_in]
+ret
+sprompt:
+mov [sprompt_prmpt], rax
+mov [sprompt_msgSize], rdi
+mov rax, [sprompt_prmpt]
+call stdout
+mov rax, [sprompt_msgSize]
+call bluescript2_string_input
+mov [sprompt_theString], rax
+mov rax, [sprompt_theString]
+ret
+prompt:
+mov [prompt_prmpt], rax
+mov rax, [prompt_prmpt]
+mov rdi, [stdinBuffSize]
+call sprompt
+mov [prompt_inp], rax
+mov rax, [prompt_inp]
 ret
 print:
 mov [print_msg], rax
@@ -80,13 +78,6 @@ stdout_i:
 mov [stdout_i_msg], rax
 mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
-ret
-println_i:
-mov [println_i_msg], rax
-mov rax, [println_i_msg]
-call stdout_i
-lea rax, [bs_str19]
-call stdout
 ret
 exit:
 mov [exit_exitCode], rax
@@ -133,24 +124,6 @@ mov [pwarn_err], rax
 mov rax, [pwarn_err]
 call print
 ret
-mod:
-mov [mod_dividend], rax
-mov [mod_divisor], rdi
-mov rax, [mod_divisor]
-mov rdx, 0
-cmp rax, rdx
-jne .bs_logic_end35
-lea rax, [bs_str37]
-call print
-mov rax, 1
-ret
-.bs_logic_end35:
-mov rax, [mod_dividend]
-mov rdi, [mod_divisor]
-call bs_modulus
-mov [mod_re], rax
-mov rax, [mod_re]
-ret
 section .rodata
 STDOUT dd 1
 SYS_open dd 2
@@ -161,17 +134,18 @@ digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
-isDivisible_a resw 4
-isDivisible_b resw 4
-isDivisible_x resw 4
-main_x resw 4
-main_y resw 4
 stderr_msg resw 4
 stderr_eno resw 4
 stdout_msg resw 4
+atoi_intStr resw 4
+atoi_in resw 4
+sprompt_prmpt resw 4
+sprompt_msgSize resw 4
+sprompt_theString resw 4
+prompt_prmpt resw 4
+prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
-println_i_msg resw 4
 exit_exitCode resw 4
 open_pth resw 4
 open_mode resw 4
@@ -181,12 +155,7 @@ close_sysc resw 4
 fileExists_pth resw 4
 fileExists_rx resw 4
 pwarn_err resw 4
-mod_dividend resw 4
-mod_divisor resw 4
-mod_re resw 4
 section .data
-bs_str19: db "", 0xa, 0
-bs_str37: db "Division by zero", 0xa, 0
+bs_str0: db 72,101,108,108,111,44,32,119,111,114,108,100,33,0xa, 0
+stdinBuffSize dd 1024
 warno dd 0
-true dd 1
-false dd 0

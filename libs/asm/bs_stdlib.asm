@@ -25,6 +25,41 @@ section .text
     pop rax
 %endmacro
 
+bluescript2_string_input:
+    ; return the string inputted by the user
+    ; size in rax
+    push rax ; save size
+    call bs_malloc
+    pop rdx
+    mov rsi, rax
+    xor rax, rax
+    mov rdi, 0
+    syscall
+    mov rax, rsi
+    ret
+
+bs_atoi:
+    ; rax = ptr to string
+    ; rax = return value
+    xor rbx, rbx
+
+    .nextDigit:
+        movzx rsi, byte[rax]
+        inc rax      ; get next char
+        sub rsi, '0' ; convert to int
+        imul rbx, 10 ; multiply by 10 to get the next digit
+        add rbx, rsi ; rbx = rbx * 10 + rsi
+
+        cmp byte[rax], 10 ; remove \n if it exists
+        jne .checkEnd
+        inc rax
+        .checkEnd:
+        cmp byte[rax], 0
+        jne .nextDigit
+    mov rax, rbx
+    ret
+
+
 bluescript2_unix_print:
     ; string in rax
     ; file descriptor in rdi

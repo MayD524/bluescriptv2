@@ -12,7 +12,7 @@ block li_insert ptr int int -> void
     pr value index
     size = li_size pr
     if index > size
-    | raise "index out of range\n"
+    | raise "li_insert: index out of range\n"
     | return
     x = li_get pr index
     if x == BS_ENDOF_LIST
@@ -35,14 +35,18 @@ end
 
 block li_get ptr int -> int
     pr index
-    ## TODO: check if index is valid
+    sz = li_size pr
+    if index >= sz
+    | return BS_ENDOF_LIST
     got = bs_get pr index
     return got
 end
 
 block li_remove ptr int -> void
     pr index
-    ## TODO: check if index is valid
+    sz = li_size pr
+    if index >= size
+    | raise "index out of range\n" 
     bs_remove pr index
 end
 
@@ -51,4 +55,28 @@ block li_size ptr -> int
     sz = bs_length pr
     sz / 8
     return sz
+end
+
+block li_eol ptr -> int
+    pr
+    sz = bs_length pr
+    ## get the last element
+    sz - 1
+    lastElm = li_get pr sz
+    return lastElm
+end
+
+block generator int int -> ptr 
+    start max
+    dif = max
+    dif - start
+    newLi = List dif
+    index = 0
+    value = start
+    do 
+        li_insert newLi value index
+        index + 1
+        value + 1
+    while index < dif
+    return newLi
 end

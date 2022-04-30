@@ -7,9 +7,9 @@ extern _open
 bs_open:
     ; path = rax
     ; mode = rdi
+    mov rsi, rdi
     mov rdi, rax
     mov rax, 3
-    mov rsi, recursiveDepth
     mov rdx, 0
     syscall 
     ret

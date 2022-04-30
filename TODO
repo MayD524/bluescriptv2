@@ -7,7 +7,7 @@ Todo:
             - strcpy
             - strcmp
         - ints
-            - stoi/atoi
+            - [done] stoi/atoi
             - math
         - bool
             - True/False
@@ -15,9 +15,6 @@ Todo:
         - bit manipulation (more functions!)
             - shifts and logic? (do in asm)
     - one line math
-    - IO - stdout; stdin
-        - [done] print 
-        - input
     - allow generic syscalls
         - a syscall function?
             (do in stdlib)
@@ -71,21 +68,26 @@ Todo:
     - multi-returns
     - stack movements
 
-Notes:
-    - mayloc (malloc) is currently using
-        the C-Malloc and C-Free later change
-        to custom solution (just don't wanna wait
-        on that one part)
+Maybe:
     - nesting
         - nested ifs
-
-Maybe:
-    - fix token consistency issue
+    - fix token consistency issue (python)
         - use enums
 
-Bugs:
-
 Done:
+    [April 29th 2022]
+    - new string parser (way better but less file size efficent (may fix))
+    - optional void return/args 
+        - if a function takes no args no need for 'block <name> void -> <retType>'
+    - atoi
+    - user input (and int input)
+    - char to int (ex. 'a' = 97)
+    - "#include std.stdlib.bs" (include stdlib with std.*.bs)
+    - IO - stdout; stdin
+        - [done] print 
+        - [done] input
+
+    [Earlier progress (check github for updates)]
     - ptrs
         - pointers compile to ints
     - do while 
