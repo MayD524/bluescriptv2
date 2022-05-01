@@ -1,11 +1,12 @@
 #use libs/asm/bs_stdlib.asm
 #include libs/bool.bs
+#include libs/posix.bs
 
 ## general purpose stuff
 const int NULL 0
 
 ## some useful constants
-const str UNIX_CLR_SCREEN "\x1b[2J"
+const str UNIX_CLR_SCREEN "\x1b\x[2J"
 
 const int STDIN  0
 const int STDOUT 1
@@ -15,6 +16,43 @@ const int STDERR 2
 global int stdinBuffSize 1024
 global int errno 0
 global int warno 0
+
+
+block setColor int int
+    modif color
+
+    if color < 0
+    | raise "color must be >= 0"
+    if color > 8
+    | raise "color must be <= 8"
+    color + 30
+    stdout "\x["
+    stdout_i modif
+    stdout ";"
+    stdout_i color
+    stdout "m"
+end
+
+block bsat ptr int -> int
+    pr index
+    x = bs_at pr index
+    return x
+end
+
+block termSize -> ptr
+    dt = bs_termSize
+    return dt
+end
+
+block setCursorPos int int 
+    x y
+    ## set cursor position
+    stdout "\x["
+    stdout_i y
+    stdout ";"
+    stdout_i x
+    stdout "H"
+end
 
 block stderr str int -> void
     msg eno
@@ -41,7 +79,17 @@ block stdout str -> void
 end
 
 block clearScreen void -> void
-    stdout "\e[H\e[2J"
+    stdout "\x1b\x[2J"
+end
+
+block itoa int -> str
+    i
+    if i < 0
+    | raise "itoa: negative numbers not supported"
+    if i > 255
+    | raise "itoa: numbers > 255 not supported"
+    reV = bs_itoa i
+    return reV
 end
 
 block atoi str -> int

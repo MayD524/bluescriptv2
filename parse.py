@@ -1,6 +1,8 @@
 from pathlib import Path
 from pprint import pprint
 
+from sympy import Q
+
 DEBUG = False
 
 BS_GENERIC_TYPES = [
@@ -92,9 +94,9 @@ class parser:
             if line.startswith("#include"):
                 ## get the file name
                 fileName = line.split(" ", 1)[1].strip()
-                if "std." in fileName:
+                #if "std." in fileName:
                     ## get current files path
-                    fileName = fileName.replace("std.", str(Path(__file__).parent.absolute()) + "/libs/") 
+                #    fileName = fileName.replace("std.", str(Path(__file__).parent.absolute()) + "/libs/") 
                 if fileName in self.included_files:
                     continue
                 ## get the file data
@@ -111,8 +113,8 @@ class parser:
             ## allow for using assembly includes
             elif line.startswith("#use"):
                 filename = line.split(" ", 1)[1].strip()
-                if "std." in filename:
-                    fileName = fileName.replace("std.", str(Path(__file__).parent.absolute()) + "/libs/") 
+                #if "std." in filename:
+                #    filename = filename.replace("std.", str(Path(__file__).parent.absolute()) + "/libs/") 
                 if filename in self.included_files:
                     continue
                 self.included_files.append(filename)
@@ -157,6 +159,18 @@ class parser:
                 
             elif ";" in line:
                 ## break the line into lines
+                ## check if the ';' is in a string
+                if '"' in line:
+                    ## find the next '"'
+                    start = line.find('"')
+                    end_quote = line.find('"', start + 1)
+                    if end_quote == -1:
+                        raise Exception(f"Error: Unclosed string on line {line_no + 1}")
+                    ## check if the ';' is in the string
+                    if line.find(';') in range(start, end_quote):
+                        line_no += 1
+                        continue ## do not split the line
+                    
                 lines = line.split(";")
                 self.combined_data[line_no] = lines[0].strip()
                 self.combined_data.insert(line_no + 1, lines[1].strip())
@@ -256,23 +270,22 @@ class parser:
                 lineNo += 1
                 continue
             
-            ## find the next end 
+            #assert blockName not in self.blocks, f"Block {blockName} already exists! {lineNo}"
             next_end = self.combined_data[lineNo:].index("end" if not useSquiggly else "}")
             retType = self.setType(retType.strip()) 
-
             ## add the block
-            self.blocks[blockName] = {
-                "args": args,
-                "argc": argc,
-                "retType": retType,
-                "local_variables": [],
-                "lines": self.combined_data[lineNo+1:lineNo+next_end],
-                "lineRange": (lineNo, lineNo+next_end)
-            }
-            self.livingFunctions.append(blockName)
+            if blockName not in self.blocks:
+                self.blocks[blockName] = {
+                    "args": args,
+                    "argc": argc,
+                    "retType": retType,
+                    "local_variables": [],
+                    "lines": self.combined_data[lineNo+1:lineNo+next_end],
+                    "lineRange": (lineNo, lineNo+next_end)
+                }
+                self.livingFunctions.append(blockName)
             lineNo = lineNo + next_end + 1
-
-
+            
         if DEBUG:
             print("\n\n-- BLOCKS --")
             pprint(self.blocks)
@@ -405,7 +418,6 @@ class parser:
             if block not in self.calledFuncs:
                 cp.pop(block)
         self.blocks = cp
-        
         return {
             "blocks": self.blocks,                   ## all block data
             "constants": self.constantValues,        ## all constant values

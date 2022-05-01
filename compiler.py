@@ -1,3 +1,4 @@
+from json.encoder import ESCAPE
 from pprint import pprint
 import os
 import sys
@@ -23,6 +24,16 @@ TOKEN_TYPES = [
 ]
 
 DEBUG = False
+
+ESCAPE_CHARACTERS = {
+    "n" : 0xa,
+    "x" : 0x1b,
+    "t" : 0x9,
+    "b" : 0x7,
+    "d" : 0x8,
+    "r" : 0xd,
+    "v" : 0xb
+}
 
 JMP_MODES = {
     14 : "jle",
@@ -186,13 +197,8 @@ class compiler:
             if char == "\\":
                 nxt = value[i+1]
                 skip = True
-                match nxt:
-                    case "n":
-                        endStr += ",0xa"
-                    case "e":
-                        endStr += ",27"
-                    case _:
-                        skip = False
+                code = ESCAPE_CHARACTERS[nxt]
+                endStr += f",{code}"
                 continue
                         
             endStr += "," + str(ord(char))
@@ -240,7 +246,7 @@ class compiler:
                 ext = self.getExtention(varName if '[' not in varName else varName.split("[")[0])
                 if not ext: raise Exception(f"variable {varName} not found")
                 if len(line) > token_no+2:
-                    assert len(line) != token_no+3, f"line {lineNo} has no value for variable {varName}, '{line}'"
+                    assert len(line) != token_no+3, f"line {name}:{lineNo} has no value for variable {varName}, {line}"
                     incToken = 3
                     mode     = line[token_no+2]
                     dType    = line[token_no+3]
@@ -453,6 +459,8 @@ class compiler:
                         needReturnValue = False
                     break
                 if functionData["argc"] != loc_argc // 2:
+                    print(loc_args)
+                    print(line)
                     raise Exception(f"{name}:{lineNo} >> function {nextFun} takes {functionData['argc']} arguments, but {loc_argc//2} were given")
                 ## check if all arguments are of the same type
                 regIndex = 0

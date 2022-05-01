@@ -6,6 +6,7 @@
 #use libs/asm/posix.asm
 #use libs/asm/bs_fstream.asm
 #include libs/string.bs
+
 const str os_name "posix"
 
 const int SUCCESS_EXIT 0
@@ -24,7 +25,6 @@ const int O_RDWR 2
 const int O_CREAT 64
 const int O_APPEND 1024
 const int O_DIRECTORY 65536
-
 
 block write str str -> void
     # write to a file (w/ ptr)
@@ -87,6 +87,7 @@ block fileExists str -> int
     if rx < 100 # we can assume that we wont have a file with a fd of 100 
     | close rx
     | return 1
+    
     return 0
 end
 

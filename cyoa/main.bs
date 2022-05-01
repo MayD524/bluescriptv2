@@ -1,0 +1,10 @@
+#include std.stdlib.bs
+
+global int gameState 0
+
+block main -> int
+    stdout "Welcome to the game!\n This is a choose your own adventure game, written in BlueScript.\n"
+    stdout "Author: May Draskovics\n"
+    stdout "Press enter to start\n"
+    return gameState
+end

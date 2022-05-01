@@ -22,7 +22,6 @@ Todo:
         - maps/dicts
         - sets
         - structs
-        - classes? (most likely not)
         - generators (array extension)
     - better errors
     - command line args

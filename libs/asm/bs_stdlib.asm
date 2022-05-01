@@ -38,6 +38,43 @@ bluescript2_string_input:
     mov rax, rsi
     ret
 
+bs_termSize:
+    mov rax, 2
+    call bs_malloc
+    mov rdx, rax
+    
+    mov rax, 16
+    mov rdi, 1
+    mov rsi, 0x5413
+    syscall
+
+    mov rax, rdx
+    ret
+
+bs_at:
+    ; rax = ptr
+    ; rdi = index
+    ; return the value at the index
+
+    cmp rdi, 0
+    jg .nonzero
+    mov rax, [rax+0*8]
+    ret
+    .nonzero:
+    mov rax, [rax+rdi*2]
+    ret
+
+bs_itoa:
+    ; rax = int 
+    ; rax = new character
+    ; rdi = buffer
+    push rax
+    mov rax, 1
+    call bs_malloc
+    pop rdx
+    mov [rax], rdx
+    ret
+
 bs_atoi:
     ; rax = ptr to string
     ; rax = return value

@@ -7,11 +7,41 @@ section .text
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
-lea rax, [bs_str0]
+call termSize
+mov [main_tmSize], rax
+mov rax, [main_tmSize]
+mov rdi, 0
+call bsat
+mov [main_x], rax
+mov rax, [main_tmSize]
+mov rdi, 1
+call bsat
+mov [main_y], rax
+mov rax, [main_x]
+call stdout_i
+lea rax, [bs_str6]
+call stdout
+mov rax, [main_y]
+call stdout_i
+lea rax, [bs_str7]
 call stdout
 mov rax, 60
 mov rdi, 0
 syscall
+ret
+bsat:
+mov [bsat_pr], rax
+mov [bsat_index], rdi
+mov rax, [bsat_pr]
+mov rdi, [bsat_index]
+call bs_at
+mov [bsat_x], rax
+mov rax, [bsat_x]
+ret
+termSize:
+call bs_termSize
+mov [termSize_dt], rax
+mov rax, [termSize_dt]
 ret
 stderr:
 mov [stderr_msg], rax
@@ -22,21 +52,27 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end2
+je .bs_logic_end17
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end2:
+.bs_logic_end17:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end5
+jle .bs_logic_end20
 mov rax, 1
 call exit
-.bs_logic_end5:
+.bs_logic_end20:
 ret
+ret
+raise:
+mov [raise_msg], rax
+mov rax, [raise_msg]
+mov rdi, 1
+call stderr
 ret
 stdout:
 mov [stdout_msg], rax
@@ -80,9 +116,9 @@ mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
 ret
 exit:
-mov [exit_exitCode], rax
-mov rax, [exit_exitCode]
-call bs_asmExit
+mov [exit_eno], rax
+mov rax, [exit_eno]
+call bs_exit
 ret
 open:
 mov [open_pth], rax
@@ -111,12 +147,12 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jge .bs_logic_end29
+jge .bs_logic_end44
 mov rax, [fileExists_rx]
 call close
 mov rax, 1
 ret
-.bs_logic_end29:
+.bs_logic_end44:
 mov rax, 0
 ret
 pwarn:
@@ -134,8 +170,16 @@ digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
+main_tmSize resw 4
+main_x resw 4
+main_y resw 4
+bsat_pr resw 4
+bsat_index resw 4
+bsat_x resw 4
+termSize_dt resw 4
 stderr_msg resw 4
 stderr_eno resw 4
+raise_msg resw 4
 stdout_msg resw 4
 atoi_intStr resw 4
 atoi_in resw 4
@@ -146,7 +190,7 @@ prompt_prmpt resw 4
 prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
-exit_exitCode resw 4
+exit_eno resw 4
 open_pth resw 4
 open_mode resw 4
 open_sysc resw 4
@@ -156,6 +200,7 @@ fileExists_pth resw 4
 fileExists_rx resw 4
 pwarn_err resw 4
 section .data
-bs_str0: db 72,101,108,108,111,44,32,119,111,114,108,100,33,0xa, 0
+bs_str6: db 10, 0
+bs_str7: db 10, 0
 stdinBuffSize dd 1024
 warno dd 0
