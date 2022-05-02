@@ -1,0 +1,142 @@
+#include libs/list.bs
+#include libs/math.bs
+global ptr gameState 0
+
+block displayCell int
+    cellID
+    cell = li_get gameState cellID
+    if cell == 1
+    | stdout "X"
+    | return
+    if cell == 2
+    | stdout "O"
+    | return
+    stdout "-"
+end
+
+block drawCells
+    cellID = 0
+    setCursorPos 0 0
+    do
+        displayCell cellID
+        cellID + 1
+        newRow = mod cellID 3
+        if newRow == 0
+        | stdout "\n"
+    while cellID < 9
+end
+
+block checkLine int -> int
+    line
+    i = line
+    i * 3
+    x = 0
+    xCount = 0
+    oCount = 0
+    do
+        cell = li_get gameState i
+        if cell == 1
+        | xCount + 1
+        if cell == 2
+        | oCount + 1
+        i + 1
+        x + 1
+    while x < 3
+    if xCount == 3
+    | return 1
+    if oCount == 3
+    | return 2
+    return 0
+end
+
+block checkDiagonals -> int
+    center = li_get gameState 4
+
+    ## no one has the center yet
+    if center > 2
+    | return 0
+    if center == 0
+    | return 0
+
+    ## check 0 and 8
+    topLeft = li_get gameState 0
+    bottomRight = li_get gameState 8
+
+    if topLeft == center
+    | if bottomRight == center
+    | | return center
+    
+    topRight = li_get gameState 2
+    bottomLeft = li_get gameState 6
+
+    if topRight == center
+    | if bottomLeft == center
+    | | return center
+
+    return 0
+end
+
+block checkCol int -> int
+    col
+    i = col
+    x = 0
+    xCount = 0
+    oCount = 0
+    do
+        cell = li_get gameState i
+        if cell == 1
+        | xCount + 1
+        if cell == 2
+        | oCount + 1
+        i + 3
+        x + 1
+    while x < 3
+    if xCount == 3
+    | return 1
+    if oCount == 3
+    | return 2
+    return 0
+end
+
+block checkWin int -> int
+    totalOccupiedCells
+    i = 0
+    do
+        winner = checkLine i
+        if winner != 0
+        | return winner
+
+        winner = checkCol i
+        if winner != 0
+        | return winner
+        i + 1
+    while i < 3
+
+    diag = checkDiagonals
+    if diag != 0
+    | return diag
+
+    if totalOccupiedCells >= 9
+    | return 3 ## draw
+    return 0 ## no winner
+end
+
+block updateCell int int -> int
+    cellID newVal
+
+    sz = li_size gameState
+    if cellID >= sz
+    | return 1
+    cVal = li_get gameState cellID
+    if cVal == 1
+    | return 1 ## try again
+    if cVal == 2
+    | return 1 ## try again
+    li_insert gameState newVal cellID
+    return 0 ## success
+end
+
+block init 
+    liPtr = List 9
+    gameState + liPtr
+end

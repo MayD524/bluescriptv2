@@ -3,7 +3,7 @@ section .text
 ; this relies on malloc
 ;%include "libs/asm/posix.asm"
 
-%define __BS_LIST_END__ 0xFFFFFFF
+%define __BS_LIST_END__ 0xFFFF
 
 bs_makeList:
     ; size in rax
@@ -11,7 +11,8 @@ bs_makeList:
     call bs_malloc
     ; set the end marker
     pop rdi
-    mov dword [rax+rdi*8], __BS_LIST_END__
+    imul rdi, 8
+    mov dword [rax+rdi], __BS_LIST_END__
     ret
 
 bs_length:
@@ -32,7 +33,8 @@ bs_get:
     ; list in rax
     ; index in rdi
     ; return value in rax
-    mov rsi, [rax+rdi*8]
+    imul rdi, 8
+    mov rsi, [rax+rdi]
     mov rax, rsi
     ret
 
@@ -40,18 +42,20 @@ bs_insert:
     ; ptr in rax
     ; val in rdi
     ; index in rsi
-    mov [rax+rsi*8], rdi
+    imul rsi, 8
+    mov [rax+rsi], rdi
     ret
 
 bs_remove:
     ; ptr in rax
-    ; index in rsi
+    ; index in rdi
     push rax
     call bs_length
-    cmp rax, rsi
+    cmp rax, rdi
     jge .remove_end
     pop rax
-    mov dword [rax+rsi*8], 0
+    imul rdi, 8
+    mov dword [rax+rdi], 0
     ret
     .remove_end:
     ret

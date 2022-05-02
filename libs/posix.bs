@@ -52,6 +52,16 @@ block mayloc int -> int
     return new_ptr
 end
 
+block mayfree ptr
+    ## free (free memory)
+    pr
+    bs_free pr
+end
+
+block strFree str
+    sr
+    bs_free sr
+end
 
 #block fsize int -> int
 #    fd

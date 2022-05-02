@@ -1,0 +1,78 @@
+#include libs/stdlib.bs
+#include tictactoe/drawCell.bs
+
+#*
+# * There is a bug with starting with 7 or 8 
+# * 7 = segfault
+# * 8 = reset on the next turn
+# * TODO: fix that :)
+*#
+
+block preamble
+    clearScreen 
+    stdout "Welcome to the game!\n"
+    stdout "This is a tic tac toe game, written in " 
+    setColor 1 4
+    stdout "BlueScript.\n"
+    termReset
+    stdout "Author: May Draskovics\n"
+    PAUSE
+    clearScreen
+end
+
+block gameLoop
+    totalOccupiedCells = 0
+    isRunning = 0
+    turn = 0
+    do 
+        drawCells
+        stdout "Player "
+        if turn == 0
+        | stdout "X turn!\n"
+        if turn == 1
+        | stdout "O turn!\n"
+
+        choice = iprompt "Player select: "
+        cVal = turn
+        cVal + 1
+        retVal = updateCell choice cVal
+
+        if retVal == 1
+        | setColor 1 1
+        | stdout "Invalid input! space is occupied.\n"
+        | termReset
+        | continue
+
+        turn + 1
+        if turn == 2
+        | turn = 0
+
+        setColor 1 5
+        stdout "\x[2K"
+        stdout "Next turn!\n"
+        termReset
+
+        totalOccupiedCells + 1
+        isRunning = checkWin totalOccupiedCells
+
+    while isRunning == 0
+    clearScreen
+    drawCells
+    stdout "Game over!\n"
+    if isRunning == 1
+    | stdout "Player X wins!\n"
+    if isRunning == 2
+    | stdout "Player O wins!\n"
+    if isRunning == 3
+    | stdout "Draw!\n"
+    stdout "\n"
+end
+
+block main -> int
+    clearScreen
+    #preamble ## just welcome text and stuff
+    init
+    gameLoop 
+
+    return 0
+end

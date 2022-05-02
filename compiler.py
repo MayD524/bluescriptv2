@@ -93,9 +93,13 @@ class compiler:
         for bss in self.compiledASM[".bss"]:
             if any(name == x for x in bss.split(" ")):
                 return True
+        for data in self.compiledASM[".data"]:
+            if any(name == x for x in data.split(" ")):
+                return True
         return False
     
     def allocSpace(self, name:str, dtype:str, size:int=4) -> None:
+        if name in self.package["globals"]: return
         if name in self.package["arrays"]: return
         if self.isAlloced(name): return
         if dtype == "int" or dtype == "BS_INT_TOKEN" and name not in self.package["arrays"]:
@@ -224,12 +228,30 @@ class compiler:
             raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable '{value}' is not an integer, but a {self.typeOf(value)}")
     
     def compile_blockLine(self, name:str, line:list[str], lineNo:int=0) -> bool:
-        if line[0] != 13 and self.inLogicDecl:
+        expectedIndent = len(self.logicEndLabel) - 1 if len(self.logicEndLabel) > 0 else 0
+        
+        ## check if the line is just the number '13'
+        check = set(line)
+        if check == {13}:
+            return False
+        
+        if line[expectedIndent] != 13 and self.inLogicDecl:
             self.compiledASM[".text"].append(f"{self.logicEndLabel[-1]}:\n")
-            self.logicEndLabel.pop()
+            ## check if any are 13
+            if any(x == 13 for x in line[:expectedIndent]):
+                cnt = line[:expectedIndent].count(13)
+                for i in range(cnt):
+                    ## add the label 
+                    self.compiledASM[".text"].append(f"{self.logicEndLabel[-1]}:\n")
+                    self.logicEndLabel.pop()
+            else:
+                for end in self.logicEndLabel:
+                    self.compiledASM[".text"].append(f"{end}:\n")
+                self.logicEndLabel.clear()
+                
             self.inLogicDecl = False if len(self.logicEndLabel) == 0 else True
-        elif line[0] == 13:
-            line = line[1 + len(self.logicEndLabel) - 1:]
+        if line[expectedIndent] == 13:
+            line = line[expectedIndent:]
         hasReturned     = False
         needReturnValue = False ## for declaring variables that require a return value
         returnVarName   = ""
@@ -511,8 +533,7 @@ class compiler:
                         
                         mode += 1 if mode % 2 == 0 else -1
                         
-                        if mode not in JMP_MODES:
-                            raise Exception(f"unknown jump mode '{mode}' (this is a compiler error sorry for lack of detail :/)")
+                        assert mode in JMP_MODES, f"{name}:{lineNo} >> invalid jump mode {mode}"
                         mode = JMP_MODES[mode]
                         
                         ## check if cmp1 is a variable or a string
@@ -712,6 +733,7 @@ class compiler:
         
         if DEBUG: pprint(self.package["livingFunctions"])
         print("\n\n ---- Compiling... ----")
+        print(self.package["globals"])
         self.compileBlock()
         self.compileConstants()
         self.compileArray()

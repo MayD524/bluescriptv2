@@ -1,3 +1,5 @@
+section .bss
+    dummy resb 1
 
 section .data
     bs_negative db "-"
@@ -25,16 +27,37 @@ section .text
     pop rax
 %endmacro
 
+bs_clearStdin:
+    .core:
+    xor rax, rax
+    mov rdi, 0
+    mov rsi, dummy
+    mov rdx, 1
+    syscall
+    cmp byte[rsi], 10
+    jne .core
+    ret
+
 bluescript2_string_input:
     ; return the string inputted by the user
     ; size in rax
-    push rax ; save size
-    call bs_malloc
-    pop rdx
-    mov rsi, rax
-    xor rax, rax
-    mov rdi, 0
+    push rax        ; save size
+    call bs_malloc  ; make a buffer for the string
+    pop rdx         ; size in rdx
+
+    mov rsi, rax    ; string buffer
+    xor rax, rax    ; 0 for sys_read
+    mov rdi, 0      ; stdin
     syscall
+
+    cmp rax, rdx    ; check if there are any extra characters
+    jl .done
+    
+    push rsi        ; save string buffer
+    call bs_clearStdin ; so we don't get more input than we asked for
+    pop rsi         ; string buffer
+    
+    .done:
     mov rax, rsi
     ret
 

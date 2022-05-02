@@ -20,7 +20,6 @@ global int warno 0
 
 block setColor int int
     modif color
-
     if color < 0
     | raise "color must be >= 0"
     if color > 8
@@ -31,6 +30,10 @@ block setColor int int
     stdout ";"
     stdout_i color
     stdout "m"
+end
+
+block termReset
+    stdout "\x[0m"
 end
 
 block bsat ptr int -> int
@@ -44,9 +47,28 @@ block termSize -> ptr
     return dt
 end
 
+block setCursorLine int int
+    lineNo direction
+    stdout "\x["
+    stdout_i lineNo
+    if direction == 1
+    | stdout "A" # up
+    if direction == 2
+    | stdout "B" # down
+end
+
+block setCursorColumn int int
+    columnNo direction
+    stdout "\x["
+    stdout_i columnNo
+    if direction == 1
+    | stdout "C" # right
+    if direction == 2
+    | stdout "D" # left
+end
+
 block setCursorPos int int 
     x y
-    ## set cursor position
     stdout "\x["
     stdout_i y
     stdout ";"
@@ -67,6 +89,10 @@ block stderr str int -> void
     return
 end
 
+block PAUSE 
+    x = prompt "Press enter to continue..."
+end
+
 ## just an stderr wrapper (just looks nicer)
 block raise str -> void
     msg
@@ -80,6 +106,7 @@ end
 
 block clearScreen void -> void
     stdout "\x1b\x[2J"
+    setCursorPos 0 0
 end
 
 block itoa int -> str
@@ -121,7 +148,7 @@ end
 
 block iprompt str -> int
     prmpt
-    dt = prompt prmpt
+    dt = sprompt prmpt 4
     dti = atoi dt
     return dti
 end

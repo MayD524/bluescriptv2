@@ -185,7 +185,8 @@ class parser:
             elif line.startswith("while"):
                 assert whileCheck, "While without do"
                 
-                logic = line.split("while", 1)[1].strip()
+                logic = line.split("while", 1)[1].strip()            
+                
                 self.combined_data[line_no] = f"if {logic}"
                 self.combined_data.insert(line_no + 1, f"| goto {whileBlkName[-1]}")
                 
@@ -193,9 +194,18 @@ class parser:
                 if len(whileBlkName) == 0:
                     whileCheck = False
             
-            elif line == "continue":
+            elif "continue" in line:
+                if "\"" in line:
+                    strStart = line.find('"')
+                    strEnd = line.find('"', strStart + 1)
+                    ctn = line.find("continue")
+                    if ctn in range(strStart, strEnd): ## continue in string
+                        line_no += 1
+                        continue
                 assert whileCheck, "Continue without while"
-                self.combined_data[line_no] = f"goto {whileBlkName[-1]}"
+                gotoCMD = f"goto {whileBlkName[-1]}"
+                gotoCMD = "| " + gotoCMD if "|" in line else gotoCMD
+                self.combined_data[line_no] = gotoCMD
 
             line_no += 1
         

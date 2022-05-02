@@ -1,6 +1,6 @@
 #use libs/asm/bs_list.asm
 
-const int BS_ENDOF_LIST 0xfffffff
+const int BS_ENDOF_LIST 0xFFFF
 
 block List int -> ptr
     size
@@ -66,6 +66,19 @@ block li_eol ptr -> int
     return lastElm
 end
 
+## generate a list of size n with all elements set to 0
+block li_times int -> ptr
+    size
+    newLi = List size
+    i = 0
+    do 
+        li_insert newLi 0 i
+        i + 1
+    while i < size
+    return newLi
+end
+
+## generate a list of size n with all elements set to start + i to max
 block generator int int -> ptr 
     start max
     dif = max
@@ -77,6 +90,6 @@ block generator int int -> ptr
         li_insert newLi value index
         index + 1
         value + 1
-    while index < dif
+    while index <= dif
     return newLi
 end
