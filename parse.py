@@ -1,8 +1,6 @@
 from pathlib import Path
 from pprint import pprint
 
-from sympy import Q
-
 DEBUG = False
 
 BS_GENERIC_TYPES = [
