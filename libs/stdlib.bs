@@ -18,6 +18,15 @@ global int errno 0
 global int warno 0
 
 
+block randint int int -> int
+    min max
+    max + 1 ## make inclusive
+    num = bs_random max
+    if num < min
+    | num + min
+    return num
+end
+
 block setColor int int
     modif color
     if color < 0

@@ -236,7 +236,7 @@ class compiler:
             return False
         
         if line[expectedIndent] != 13 and self.inLogicDecl:
-            self.compiledASM[".text"].append(f"{self.logicEndLabel[-1]}:\n")
+            ## self.compiledASM[".text"].append(f"{self.logicEndLabel[-1]}:\n")
             ## check if any are 13
             if any(x == 13 for x in line[:expectedIndent]):
                 cnt = line[:expectedIndent].count(13)
@@ -685,7 +685,6 @@ class compiler:
             data = ','.join(['0' for _ in range(int(self.package["arrays"][array][1]))])
             self.compiledASM[".data"].append(f"{array} dq {data}")
             
-        
     def compileGlobals(self) -> None:
         for global_ in self.package["globals"]:
             dtype, value = self.package["globals"][global_][0], self.package["globals"][global_][1]
@@ -697,12 +696,13 @@ class compiler:
         for constant in self.package["constants"]:
             self.package['constants'][constant][1] = self.package['constants'][constant][1] if not self.isVariable(self.package['constants'][constant][1]) else f"[{self.package['constants'][constant][1]}]"
             ## check if there is a newline in the string
-            if "\\n" in self.package['constants'][constant][1]:
-                self.package['constants'][constant][1] = self.package['constants'][constant][1].replace("\\n", "")
-                self.package['constants'][constant][1] += ", 10" if self.package['constants'][constant][1] != "" else "10"
-            
-            self.compiledASM[".rodata"].append(f"{constant} dd {self.package['constants'][constant][1]}")
-    
+            if "\"" in self.package['constants'][constant][1]:
+                val = self.package['constants'][constant][1]
+                str = self.allocStr(val)
+                self.compiledASM[".rodata"].append(f"{constant} dd {str}")
+            else:
+                self.compiledASM[".rodata"].append(f"{constant} dd {self.package['constants'][constant][1]}")
+
     def removeFromSection(self, name:str, section:str) -> None:
         if not any(name in alloc for alloc in self.compiledASM[section]): return
 
@@ -733,7 +733,6 @@ class compiler:
         
         if DEBUG: pprint(self.package["livingFunctions"])
         print("\n\n ---- Compiling... ----")
-        print(self.package["globals"])
         self.compileBlock()
         self.compileConstants()
         self.compileArray()

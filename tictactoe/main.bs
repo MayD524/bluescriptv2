@@ -11,7 +11,7 @@
 block preamble
     clearScreen 
     stdout "Welcome to the game!\n"
-    stdout "This is a tic tac toe game, written in " 
+    stdout "This is a tic tac toe game, written in "
     setColor 1 4
     stdout "BlueScript.\n"
     termReset
@@ -20,11 +20,13 @@ block preamble
     clearScreen
 end
 
-block gameLoop
+block gameLoop int
+    pCount
     totalOccupiedCells = 0
     isRunning = 0
     turn = 0
     do 
+        clearScreen
         drawCells
         stdout "Player "
         if turn == 0
@@ -32,7 +34,35 @@ block gameLoop
         if turn == 1
         | stdout "O turn!\n"
 
-        choice = iprompt "Player select: "
+        ## run the cpu player if it's the cpu's turn
+        ## and the cpu is enabled
+        tmp = turn
+        tmp + pCount
+        if tmp == 2
+        | label cpuTryAgain
+        | choice = randint 0 9
+        | rVal = updateCell choice 2
+        | if rVal != 0
+        | | goto cpuTryAgain
+        | goto cpuTurnEnd
+
+        ## human player always 0 and 1 if no cpu
+        validChoice = 0
+        do
+            termReset
+            choice = iprompt "Player select: "
+            if choice < 1
+            | setColor 1 1
+            | stdout "Invalid choice!\n"
+            | continue
+            if choice > 9
+            | setColor 1 1
+            | stdout "Invalid choice!\n"
+            | continue
+            choice - 1 # because the array starts at 0
+            validChoice = 1
+        while validChoice == 0
+
         cVal = turn
         cVal + 1
         retVal = updateCell choice cVal
@@ -42,6 +72,10 @@ block gameLoop
         | stdout "Invalid input! space is occupied.\n"
         | termReset
         | continue
+
+        ## game logic for end of turn
+        
+        label cpuTurnEnd ## this is where the cpu player ends the turn
 
         turn + 1
         if turn == 2
@@ -58,6 +92,7 @@ block gameLoop
     while isRunning == 0
     clearScreen
     drawCells
+
     stdout "Game over!\n"
     if isRunning == 1
     | stdout "Player X wins!\n"
@@ -68,11 +103,40 @@ block gameLoop
     stdout "\n"
 end
 
+block playerCount -> int
+    termReset
+    label TryAgain
+    total = iprompt "How many players? 1 or 2: "
+    if total < 1
+    | setColor 1 1
+    | stdout "Invalid input!\n"
+    | goto TryAgain
+
+    if total > 2
+    | setColor 1 1
+    | stdout "Invalid input!\n"
+    | goto TryAgain
+
+    return total
+end
+
+block hello -> int
+    return 10
+end
+
+block t int
+    a
+    stdout_i a
+    stdout "\n"
+end
+
 block main -> int
     clearScreen
-    #preamble ## just welcome text and stuff
+    preamble ## just welcome text and stuff
+    total = playerCount
+    if total == 2
+    | total = 0
     init
-    gameLoop 
-
+    gameLoop total
     return 0
 end

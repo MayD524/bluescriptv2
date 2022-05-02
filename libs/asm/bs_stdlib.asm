@@ -38,6 +38,15 @@ bs_clearStdin:
     jne .core
     ret
 
+bs_random:
+    ; max in rax
+    mov rbx, rax
+    rdtsc
+    xor rdx, rdx
+    div rbx
+    mov rax, rdx
+    ret
+
 bluescript2_string_input:
     ; return the string inputted by the user
     ; size in rax
