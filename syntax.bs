@@ -1,5 +1,9 @@
 #include libs/stdlib.bs
+#include libs/os.bs
 
 block main -> int
+    test = getcwd
+    println test
+    mkdir "test"
     return 0
 end

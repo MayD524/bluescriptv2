@@ -1,0 +1,15 @@
+#use libs/asm/bs_os.asm
+
+block getcwd -> str
+    cwd = bs_getCwd
+    return cwd
+end
+
+block mkdir str
+    pthName
+    syscall 83 pthName 777
+    pop
+end
+
+block exists str -> bool
+    pthName

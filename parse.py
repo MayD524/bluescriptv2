@@ -1,4 +1,3 @@
-from pathlib import Path
 from pprint import pprint
 
 DEBUG = False
@@ -53,6 +52,11 @@ BS_KEY_TOKENS = {
     ";"     : 26,
     "goto"  : 27,
     "label" : 28,
+    "switch": 29,
+    "case"  : 30,
+    "syscall": 31,
+    "pop"   : 32,
+    "push"  : 33,
 }
 
 BS_COMMENT_CHAR = "#"
@@ -251,8 +255,11 @@ class parser:
                     retType = "void"
                     argc = argc.strip()
                 args = argc.split(" ")
+                
                 for i in range(len(args)):
                     args[i] = args[i].replace(",", "").strip()
+                    if "|" in args[i]:
+                        args[i] = "|".join([self.setType(x) for x in args[i].split("|")])
                     args[i] = self.setType(args[i])
                     if args[i] == "":
                         args.pop(i)

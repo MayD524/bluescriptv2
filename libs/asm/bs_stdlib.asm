@@ -47,6 +47,24 @@ bs_random:
     mov rax, rdx
     ret
 
+bs_sleepy:
+    ; seconds in rax
+    ; nanoseconds in rdi
+    push rbp
+
+    mov rbp, rsp
+    push rdi
+    push rax
+
+    mov rax, 35
+    mov rdi, rsp
+    mov rsi, 0
+    syscall
+    
+    mov rsp, rbp
+    pop rbp
+    ret
+
 bluescript2_string_input:
     ; return the string inputted by the user
     ; size in rax

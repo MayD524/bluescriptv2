@@ -82,7 +82,10 @@ class compiler:
         
         ## for logic control (so we can do our checks)
         self.inLogicDecl:bool                = False
-        self.logicEndLabel:list[str]    = []
+        self.logicEndLabel:list[str]         = []
+
+        ## switch name : [cases]
+        self.switchCaseStack:dict[str,list[str]] = {}
         
         self.currentFunName:str = None
         self.currentLineNo:int  = 0
@@ -481,8 +484,6 @@ class compiler:
                         needReturnValue = False
                     break
                 if functionData["argc"] != loc_argc // 2:
-                    print(loc_args)
-                    print(line)
                     raise Exception(f"{name}:{lineNo} >> function {nextFun} takes {functionData['argc']} arguments, but {loc_argc//2} were given")
                 ## check if all arguments are of the same type
                 regIndex = 0
@@ -494,8 +495,13 @@ class compiler:
                     if argValue in TOKEN_TYPES and argType not in TOKEN_TYPES:
                         argValue, argType = argType, argValue
                     
-                    if self.typeOf(argValue) != functionData["args"][arg_ptr-arg_ptr//2] and functionData["args"][arg_ptr-arg_ptr//2] not in ["any", "ptr", "void"] :
-                        raise Exception(f"{name}:{lineNo} function {nextFun} takes {functionData['args'][arg_ptr-arg_ptr//2]} as argument {arg_ptr}, but got {self.typeOf(argValue)}. variable: '{argValue}'")
+                    funcArgType = functionData["args"][arg_ptr-arg_ptr//2]
+                    if "|" in funcArgType:
+                        funcArgType = funcArgType.split("|")
+                        assert self.typeOf(argValue) in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {' or '.join(funcArgType)}, but {self.typeOf(argValue)} was given"
+
+                    elif funcArgType not in ["arg", "void"]:
+                        assert self.typeOf(argValue) == funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {self.typeOf(argValue)} was given"
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         strName = self.allocStr(argValue)
@@ -608,6 +614,42 @@ class compiler:
                         token_no += 1
                         hasReturned = True
                     
+                    case 29: ## switch
+                        pass
+
+                    case 30: ## case
+                        pass
+
+                    case 31: ## syscall
+                        args = [x for x in line[token_no+1:] if x not in TOKEN_TYPES]
+                        assert len(args) != 0, f"{name}:{lineNo} >> syscall has no arguments"
+                        assert len(args) < 9, f"{name}:{lineNo} >> syscall has too many arguments"
+
+                        for i in range(len(args)):
+                            if self.isVariable(args[i]):
+                                args[i] = f"[{args[i]}]"
+                            elif self.typeOf(args[i]) == "str":
+                                strName = self.allocStr(args[i])
+                                args[i] = f"[{strName}]"
+                            self.compiledASM[".text"].append(f"mov {REGISTERS[i]}, {args[i]}")
+                        self.compiledASM[".text"].append(f"syscall\npush rax")
+                    
+                    case 32: ## pop
+                        if len(line) >= token_no + 2:
+                            varname = line[token_no+2]
+                            assert self.isVariable(varname), f"{name}:{lineNo} >> {varname} is not a variable"
+                            self.compiledASM[".text"].append(f"pop rax")
+                            self.compiledASM[".text"].append(f"mov [{varname}], rax")
+                        else:
+                            self.compiledASM[".text"].append("pop rax")
+
+                    case 33: ## push
+                        data = line[token_no+2]
+                        if self.isVariable(data):
+                            data = f"[{data}]"
+                        self.compiledASM[".text"].append(f"mov rax, {data}")
+                        self.compiledASM[".text"].append(f"push rax")
+
                     case _:
                         pass
                         #raise Exception(f"unrecognized token: {token}")
@@ -654,7 +696,8 @@ class compiler:
                             raise Exception(f"size of '{size}' is not a number")
                     else:
                         ## this allocates parameters for the function
-                        self.allocSpace(arg, dtype)
+                        typ = dtype.split("|")[0] if "|" in dtype else dtype
+                        self.allocSpace(arg, typ)
                     self.package["variables"][arg] = [dtype, "function_argument"]
                     ## TODO: rework this (so we don't have string issues)
                     self.compiledASM[".text"].append(f"mov [{arg}], {REGISTERS[regIndex]}")

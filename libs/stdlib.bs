@@ -85,6 +85,16 @@ block setCursorPos int int
     stdout "H"
 end
 
+block wholeSleep int int
+    secs nanos
+    bs_sleepy secs nanos
+end
+
+block sleep int
+    secs
+    bs_sleepy secs 0
+end
+
 block stderr str int -> void
     msg eno
     ## derived from libs/asm/bs_stdlib.asm
