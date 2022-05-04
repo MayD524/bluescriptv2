@@ -8,11 +8,19 @@ section .text
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
-mov rax, [main_h.len]
-call stdout_i
-mov rax, [stdinBuffSize]
-call stdout_i
-lea rax, [bs_str1]
+lea rax, [bs_str2]
+call iprompt
+mov [main_a], rax
+mov rax, [main_a]
+mov rdx, 10
+cmp rax, rdx
+jne .bs_logic_end2
+lea rax, [bs_str5]
+call stdout
+mov rax, 0
+ret
+.bs_logic_end2:
+lea rax, [bs_str8]
 call stdout
 mov rax, 0
 ret
@@ -21,15 +29,15 @@ ret
 setCursorPos:
 mov [setCursorPos_x], rax
 mov [setCursorPos_y], rdi
-lea rax, [bs_str3]
+lea rax, [bs_str10]
 call stdout
 mov rax, [setCursorPos_y]
 call stdout_i
-lea rax, [bs_str4]
+lea rax, [bs_str11]
 call stdout
 mov rax, [setCursorPos_x]
 call stdout_i
-lea rax, [bs_str5]
+lea rax, [bs_str12]
 call stdout
 ret
 stderr:
@@ -41,20 +49,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end5
+je .bs_logic_end12
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end5:
+.bs_logic_end12:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end9
+jle .bs_logic_end16
 mov rax, 1
 call exit
-.bs_logic_end9:
+.bs_logic_end16:
 ret
 ret
 raise:
@@ -93,6 +101,17 @@ mov rdi, [stdinBuffSize]
 call sprompt
 mov [prompt_inp], rax
 mov rax, [prompt_inp]
+ret
+iprompt:
+mov [iprompt_prmpt], rax
+mov rax, [iprompt_prmpt]
+mov rdi, 4
+call sprompt
+mov [iprompt_dt], rax
+mov rax, [iprompt_dt]
+call atoi
+mov [iprompt_dti], rax
+mov rax, [iprompt_dti]
 ret
 print:
 mov [print_msg], rax
@@ -136,12 +155,12 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jge .bs_logic_end34
+jge .bs_logic_end47
 mov rax, [fileExists_rx]
 call close
 mov rax, 1
 ret
-.bs_logic_end34:
+.bs_logic_end47:
 mov rax, 0
 ret
 pwarn:
@@ -159,9 +178,7 @@ digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
-main_h:
-.a resw 4
-.b resw 32
+main_a resw 4
 setCursorPos_x resw 4
 setCursorPos_y resw 4
 stderr_msg resw 4
@@ -175,6 +192,9 @@ sprompt_msgSize resw 4
 sprompt_theString resw 4
 prompt_prmpt resw 4
 prompt_inp resw 4
+iprompt_prmpt resw 4
+iprompt_dt resw 4
+iprompt_dti resw 4
 print_msg resw 4
 stdout_i_msg resw 4
 exit_eno resw 4
@@ -187,12 +207,13 @@ fileExists_pth resw 4
 fileExists_rx resw 4
 pwarn_err resw 4
 section .data
-main_h.len dq 36
-bs_str1: db 10, 0
-bs_str3: db 27,91, 0
-bs_str4: db 59, 0
-bs_str5: db 72, 0
-bs_str42: db 34,27,49,98,27,91,50,74,34, 0
-bs_str43: db 34,112,111,115,105,120,34, 0
+bs_str2: db 78,117,109,98,101,114,58,32, 0
+bs_str5: db 72,101,108,108,111,32,119,111,114,108,100,33,10, 0
+bs_str8: db 72,101,108,108,111,32,73,32,97,109,32,101,118,105,108,33,10, 0
+bs_str10: db 27,91, 0
+bs_str11: db 59, 0
+bs_str12: db 72, 0
+bs_str55: db 34,27,49,98,27,91,50,74,34, 0
+bs_str56: db 34,112,111,115,105,120,34, 0
 stdinBuffSize dq 1024
 warno dq 0

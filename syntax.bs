@@ -1,12 +1,11 @@
 #include libs/stdlib.bs
 #include libs/os.bs
 
-struct a
-    int a
-    str b
-end
-
 block main -> int
-    
+    a = iprompt "Number: "
+    if a == 10
+    | stdout "Hello world!\n"
+    | return 0
+    stdout "Hello I am evil!\n"
     return 0
 end

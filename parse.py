@@ -426,6 +426,12 @@ class parser:
                         elif token.isnumeric() or token.startswith("0x") or token.startswith("0b") or token.startswith("0o") or (token.startswith('-') and token[1:].isnumeric()):
                             tokens.insert(token_no, "BS_INT_TOKEN")
                             skip = True
+                        elif "*" in token and token.replace("*", "") in self.livingFunctions:
+                            tokens.insert(token_no, "BS_INT_TOKEN")
+                            token = token.replace("*", "")
+                            tokens[token_no+1] = token
+                            self.calledFuncs.append(token)
+                            skip = True
                         elif token in self.structs:
                             tokens.insert(token_no, "BS_STRUCT_TOKEN")
                             skip = True

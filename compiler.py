@@ -519,7 +519,7 @@ class compiler:
                 while arg_ptr < loc_argc:
                     argType  = loc_args[arg_ptr]
                     argValue = loc_args[arg_ptr+1]
-                    
+
                     if argValue in TOKEN_TYPES and argType not in TOKEN_TYPES:
                         argValue, argType = argType, argValue
                     
@@ -529,7 +529,8 @@ class compiler:
                         assert self.typeOf(argValue) in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {' or '.join(funcArgType)}, but {self.typeOf(argValue)} was given"
 
                     elif funcArgType not in ["arg", "void"]:
-                        assert self.typeOf(argValue) == funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {self.typeOf(argValue)} was given"
+                        if argValue not in self.package["livingFunctions"]:
+                            assert self.typeOf(argValue) == funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {self.typeOf(argValue)} was given"
                     
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         strName = self.allocStr(argValue)
@@ -545,8 +546,11 @@ class compiler:
 
                             self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex+1]}, [{vname}] ; {token_no}")
                             argValue = f"{REGISTERS[regIndex+1]}+{size}" 
+                        
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{argValue}] ; {token_no}")
                     elif argType == "BS_INT_TOKEN":
+                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {argValue} ; {token_no}")
+                    elif argType == "BS_FUNCTION_TOKEN":
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {argValue} ; {token_no}")
                     arg_ptr  += 2
                     regIndex += 1
@@ -595,7 +599,11 @@ class compiler:
                     #    self.logicEndLabel = f"bs_logic_end{self.global_token_id}"
                     
                     case 27: ## goto
-                        self.compiledASM[".text"].append(f"jmp .{line[token_no+2]}")
+                        gotoPoint = line[token_no+2]
+                        if self.isVariable(gotoPoint):
+                            self.compiledASM[".text"].append(f"mov rax, [{gotoPoint}]\njmp rax")
+                        else:
+                            self.compiledASM[".text"].append(f"jmp .{line[token_no+2]}")
                     case 28: ## label
                         self.compiledASM[".text"].append(f".{line[token_no+2]}:")
                     

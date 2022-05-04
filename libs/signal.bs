@@ -1,0 +1,87 @@
+const int sys_rt_sigaction 13
+const int sys_rt_sigreturn 15
+
+const int SIGHUP 1
+const int SIGINT 2
+const int SIGQUIT 3
+const int SIGILL 4
+const int SIGTRAP 5
+const int SIGABRT 6
+const int SIGIOT 6
+const int SIGBUS 7
+const int SIGFPE 8
+const int SIGKILL 9
+const int SIGUSR1 10
+const int SIGSEGV 11
+const int SIGUSR2 12
+const int SIGPIPE 13
+const int SIGALRM 14
+const int SIGTERM 15
+const int SIGSTKFLT 16
+const int SIGCHLD 17
+const int SIGCONT 18
+const int SIGSTOP 19
+const int SIGTSTP 20
+const int SIGTTIN 21
+const int SIGTTOU 22
+const int SIGURG 23
+const int SIGXCPU 24
+const int SIGXFSZ 25
+const int SIGVTALRM 26
+const int SIGPROF 27
+const int SIGWINCH 28
+const int SIGIO 29
+const int SIGPOLL SIGIO
+const int SIGPWR 30
+const int SIGSYS 31
+const int SIGUNUSED 31
+
+const int NSIG 64
+
+const int SA_NOCLDSTOP 1
+const int SA_NOCLDWAIT 2
+const int SA_SIGINFO 4
+const int SA_ONSTACK 0x08000000
+const int SA_RESTART 0x10000000
+const int SA_NODEFER 0x40000000
+const int SA_RESETHAND 0x80000000
+const int SA_NOMASK 0x40000000
+const int SA_ONESHOT 0x80000000
+const int SA_RESTORER 0x04000000
+
+struct sigaction
+    ptr sa_handler 
+    ptr sa_sigaction
+    ptr sa_restorer
+    int sa_flags
+    int sa_mask 8
+end
+
+block restore
+    syscall sys_rt_sigreturn
+end
+
+block sigSignup int ptr 
+    sig handler
+    action = sigaction
+    action.sa_handler = handler
+    action.sa_restorer = *restore
+    action.sa_flags = SA_RESTORER
+
+    asm "mov r10, 64"
+    syscall sys_rt_sigaction sig action 0
+    pop x
+    
+    asm "mov rax, [sigSignup_x]"
+    asm "call stdout_i"
+
+    asm "mov rax, [sigSignup_x]"
+    asm "and rax, rax"
+    asm "js .sigSignup_error"
+    pop
+    return
+    label error
+    pop
+    stdout "error\n"
+    return
+end
