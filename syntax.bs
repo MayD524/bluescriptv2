@@ -1,9 +1,12 @@
 #include libs/stdlib.bs
 #include libs/os.bs
 
+struct a
+    int a
+    str b
+end
+
 block main -> int
-    test = getcwd
-    println test
-    mkdir "test"
+    
     return 0
 end

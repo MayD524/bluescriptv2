@@ -1,0 +1,12 @@
+
+#extern printf
+
+block exit int
+    exitCode
+    ExitProcess exitCode
+end
+
+block write str
+    msg
+    _printf msg
+end

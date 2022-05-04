@@ -44,24 +44,6 @@ block close int -> int
     return sysc
 end
 
-block mayloc int -> int
-    ## malloc (allocate memory)
-    size
-    new_ptr = 0
-    bs_malloc size new_ptr
-    return new_ptr
-end
-
-block mayfree ptr
-    ## free (free memory)
-    pr
-    bs_free pr
-end
-
-block strFree str
-    sr
-    bs_free sr
-end
 
 #block fsize int -> int
 #    fd

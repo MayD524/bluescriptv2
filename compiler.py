@@ -4,16 +4,9 @@ import os
 import sys
 
 IS_DEBUG = True
-name = "posix" if IS_DEBUG else os.name
+os_name = "posix" if IS_DEBUG else os.name
 
 FUNCTION_MAIN_NAME = "main:"
-
-if name == "nt":
-    raise NotImplementedError("Windows is not supported")
-elif name == "posix":
-    ## currently only tested on linux
-    sys_exit   = lambda code : f"mov rax, 60\nmov rdi, {code}\nsyscall\n" if code.isnumeric() else f"mov rax, 60\nmov rdi, [{code}]\nsyscall\n"
-    
 
 TOKEN_TYPES = [
     "BS_STRING_TOKEN_AHOY", 
@@ -44,6 +37,7 @@ JMP_MODES = {
     19 : "jne"
 }
 
+## this is a good order for linux
 REGISTERS = [
     "rax",
     "rdi",
@@ -93,6 +87,9 @@ class compiler:
         self.totalMemory = 0
     
     def isAlloced(self, name:str) -> bool:
+        if "." in name:
+            ## TODO: Don't blindly assume
+            return True ## we assume it's a struct
         for bss in self.compiledASM[".bss"]:
             if any(name == x for x in bss.split(" ")):
                 return True
@@ -137,7 +134,10 @@ class compiler:
         if ext != False:
             if isinstance(self.package[ext][token], str):
                 self.package[ext][token] = [self.package[ext][token], "unknown" if self.package[ext][token] == "str" else "0"]
-            return self.package[ext][token][0]
+            tpy = self.package[ext][token][0]
+            if tpy in ["float", "ptr", "int"]:
+                return "int"
+            return tpy
         elif token.isnumeric() or (token[0] == "-" and token[1:].isnumeric()):
             return "int"
         elif "." in token and token.replace(".", "").isnumeric():
@@ -305,7 +305,29 @@ class compiler:
                                 size = int(size)
                             self.package[ext][varName] = vardatacopy
                             self.package[ext][varName][0] = dType
-                        if dType != "BS_STRING_TOKEN_AHOY":
+                        
+                        if dType == "BS_STRUCT_TOKEN":
+                            assert value in self.package["structs"], f"{name}:{lineNo} struct {value} not found"
+                            dt = self.package["structs"][value]
+                            
+                            self.compiledASM[".bss"].append(f"{varName}:")
+                            print(self.compiledASM['.bss'])
+                            structSize = 0
+                            for x in dt:
+                                x = x.strip()
+                                subType, subName = x.split(" ",1)
+                                if " " in subName:
+                                    subName, size = subName.split(" ",1)
+                                else:
+                                    size = 4 if subType == "int" else 32
+                                structSize += int(size)
+                                self.compiledASM[".bss"].append(f".{subName} resw {size}")
+                                self.package["variables"][f"{varName}.{subName}"] = [subType, "unknown"]
+                            self.compiledASM[".data"].append(f"{varName}.len dq {structSize}")
+                            self.package["variables"][f"{varName}.len"] = ["int", f"{structSize}"]
+                            
+                            
+                        elif dType != "BS_STRING_TOKEN_AHOY":
                             vsize = -1 if '[' not in value and ']' not in value else int(value.split('[')[1].replace(']',''))
                             if vsize != -1:
                                 value = value.split('[')[0].replace(']','')
@@ -463,11 +485,17 @@ class compiler:
                     regIndex = 0 if nextFun not in self.package['externs'] else 1
                     for arg in loc_args:
                         #self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
-                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}" if not self.isVariable(arg) else f"mov {REGISTERS[regIndex]}, [{arg}]")
+                        arg = arg if not self.isVariable(arg) else f"[{arg}]"
+                        if regIndex == 1 and os_name == "nt":
+                            self.compiledASM[".text"].append(f"mov rax, {arg}\n push rax")
+                        else:
+                            self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
                         regIndex += 1
                     self.compiledASM['.text'].append(f"call {nextFun}")
                     if needReturnValue:
                         self.package[self.getExtention(returnVarName)][returnVarName][0] = self.package["blocks"][name]["retType"]
+                        if os_name == "nt" and regIndex == 1:
+                            self.compiledASM[".text"].append(f"pop rax")
                         self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                         needReturnValue = False
                         returnVarName   = ""
@@ -596,29 +624,29 @@ class compiler:
                         #if (retType == "int" and not retValue.isnumeric()) and (retType != self.typeOf(retValue)):
                         #    raise Exception(f"The block {name} does not return {retType} but {self.typeOf(retValue)}.")
                         
-                        if name == "main":
-                            self.compiledASM[".text"].append(sys_exit(retValue))
+                        #if name == "main":
+                        #    self.compiledASM[".text"].append(f"mov rax, {retValue}\nret")
+                        #else:
+                        ext = self.getExtention(retValue)
+                        if retValue not in self.package["constants"] or retValue not in self.package[ext]:
+                            self.compiledASM[".text"].append(f"mov rax, {retValue if not self.isVariable(retValue) else f'[{retValue}]'} ; return value in rax")
                         else:
-                            ext = self.getExtention(retValue)
-                            if retValue not in self.package["constants"] or retValue not in self.package[ext]:
-                                self.compiledASM[".text"].append(f"mov rax, {retValue if not self.isVariable(retValue) else f'[{retValue}]'} ; return value in rax")
-                            else:
-                                retValue = f"\"{retValue}\""
-                                if "\\n" in retValue:
-                                    retValue.replace("\\n")
-                                    retvalue += ", 10"
-                                self.compiledASM[".rodata"].append(f"bs_str{self.global_token_id} dd {retValue}, 0")
-                                
-                            #self.compiledASM[".text"].append(f"mov rax, {retValue} ; return value in rax")
+                            retValue = f"\"{retValue}\""
+                            if "\\n" in retValue:
+                                retValue.replace("\\n")
+                                retvalue += ", 10"
+                            self.compiledASM[".rodata"].append(f"bs_str{self.global_token_id} dd {retValue}, 0")
+                            
+                        #self.compiledASM[".text"].append(f"mov rax, {retValue} ; return value in rax")
                         self.compiledASM[".text"].append("ret")
                         token_no += 1
                         hasReturned = True
                     
                     case 29: ## switch
-                        pass
+                        raise Exception(f"switch is not implemented yet")
 
                     case 30: ## case
-                        pass
+                        raise Exception(f"case is not implemented yet")
 
                     case 31: ## syscall
                         args = [x for x in line[token_no+1:] if x not in TOKEN_TYPES]
@@ -640,6 +668,8 @@ class compiler:
                             assert self.isVariable(varname), f"{name}:{lineNo} >> {varname} is not a variable"
                             self.compiledASM[".text"].append(f"pop rax")
                             self.compiledASM[".text"].append(f"mov [{varname}], rax")
+                            self.allocSpace(varname, "int")
+                            
                         else:
                             self.compiledASM[".text"].append("pop rax")
 
@@ -669,7 +699,7 @@ class compiler:
             if block == "main" and self.package["blocks"][block]["retType"] != "int":
                 raise Exception("main function must return int")
 
-            if block == "main":
+            if block == "main" and os_name != 'nt':
                 self.compiledASM[".text"].append(f"mov [main_argc], rdi\nmov [main_argv], rsi\n")
 
             elif self.package["blocks"][block]["args"][0] != "void":
@@ -717,8 +747,11 @@ class compiler:
                 self.logicEndLabel = []
                 self.inLogicDecl = False
             
-            if requireReturn and not hasReturned:
+            if requireReturn and not hasReturned and block != "main":
                 raise Exception(f"{block} must return a value")
+            
+            elif block == "main":
+                self.compiledASM[".text"].append("mov rax, 0\n ret")
             
             elif not requireReturn and not hasReturned:
                 self.compiledASM[".text"].append("ret")
@@ -732,8 +765,9 @@ class compiler:
         for global_ in self.package["globals"]:
             dtype, value = self.package["globals"][global_][0], self.package["globals"][global_][1]
             if dtype == 'str':
-                self.pacakge["globals"][global_][1] = self.package["globals"][global_][1].replace("\\n", ", 10")
-            self.compiledASM[".data"].append(f"{global_} dd {value}")
+                self.allocStr(self.pacakge["globals"][global_][1], global_)
+                continue
+            self.compiledASM[".data"].append(f"{global_} dq {value}")
             
     def compileConstants(self) -> None:
         for constant in self.package["constants"]:
@@ -742,9 +776,9 @@ class compiler:
             if "\"" in self.package['constants'][constant][1]:
                 val = self.package['constants'][constant][1]
                 str = self.allocStr(val)
-                self.compiledASM[".rodata"].append(f"{constant} dd {str}")
+                self.compiledASM[".rodata"].append(f"{constant} db {str}")
             else:
-                self.compiledASM[".rodata"].append(f"{constant} dd {self.package['constants'][constant][1]}")
+                self.compiledASM[".rodata"].append(f"{constant} dq {self.package['constants'][constant][1]}")
 
     def removeFromSection(self, name:str, section:str) -> None:
         if not any(name in alloc for alloc in self.compiledASM[section]): return
@@ -818,5 +852,8 @@ class compiler:
         
         print("\n\n------ Compiled Assembly ------")
         print(f"compiled to: {self.outFile}")
+        if os_name == "nt":
+            print(f"nasm -fwin64 {self.outFile} && gcc {self.outFile.replace('.asm', '.obj')} -o {self.outFile.replace('.asm', '.exe')} && ./{self.outFile.replace('.asm', '.exe')}")
+            return compiled
         print(f"nasm -felf64 {self.outFile} && gcc -no-pie {self.outFile.replace('.asm', '.o')} -o {self.outFile.replace('.asm', '.out')} && ./{self.outFile.replace('.asm', '.out')}")
         return compiled

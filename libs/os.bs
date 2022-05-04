@@ -5,11 +5,21 @@ block getcwd -> str
     return cwd
 end
 
-block mkdir str
+block mkdir str -> int
     pthName
     syscall 83 pthName 777
-    pop
+    pop rVal
+    return rVal
 end
 
-block exists str -> bool
-    pthName
+block getpid -> int
+    syscall 39
+    pop uPid
+    return uPid
+end
+
+block kill int int 
+    pid sig
+    syscall 62 pid sig
+    pop ## syscall pushes a return value on the stack
+end

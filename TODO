@@ -21,7 +21,7 @@ Todo:
     - advanced datatypes
         - maps/dicts
         - sets
-        - structs
+        - [done] structs
         - generators (array extension)
     - better errors
     - command line args
@@ -118,3 +118,47 @@ Done:
 
 Resources:
     - https://github.com/Holeryn/ASM_utils/blob/master/Utils.asm
+
+Examples:
+    ? = oprion
+    Structures:
+        struct <name>
+            <type> <name> <size?>
+            ... (repeat?)
+        end
+
+        # usage 
+
+        <varName> = <struct name>
+        <varName>.<struct object> = <value>
+
+    while:
+        do
+            ## code here
+        while <condition>
+
+    if-statement:
+        if <condition>
+        | #code
+        | # more code
+        | if <condition> # nesting
+        | | # nested code
+
+    functions:
+        block <func> <args?> -> <retType?>
+            ## fun code
+        end
+
+        # or
+
+        block <func> <args?> -> <retType?> {
+            ## code
+        }
+
+        ## calling
+        <retval?> = <func> <args...?>
+
+    Linux Syscalls:
+        syscall <type> <args?>
+        pop <return?>   # if you just have pop you remove the object 
+                        # (pop is required post syscall)

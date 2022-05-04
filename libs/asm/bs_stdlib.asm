@@ -27,6 +27,8 @@ section .text
     pop rax
 %endmacro
 
+extern malloc
+
 bs_clearStdin:
     .core:
     xor rax, rax
@@ -36,6 +38,19 @@ bs_clearStdin:
     syscall
     cmp byte[rsi], 10
     jne .core
+    ret
+
+bs_malloc:
+    ; rax = size
+    mov rdi, rax
+    xor rax, rax
+    call malloc
+    test rax, rax
+    jz .bs_malloc_end
+    ret
+
+    .bs_malloc_end:
+    mov rax, 0
     ret
 
 bs_random:

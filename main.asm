@@ -8,28 +8,28 @@ section .text
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
-call getcwd
-mov [main_test], rax
-mov rax, [main_test]
-call println
-lea rax, [bs_str2]
-call mkdir
-mov rax, 60
-mov rdi, 0
-syscall
+mov rax, [main_h.len]
+call stdout_i
+mov rax, [stdinBuffSize]
+call stdout_i
+lea rax, [bs_str1]
+call stdout
+mov rax, 0
+ret
+mov rax, 0
 ret
 setCursorPos:
 mov [setCursorPos_x], rax
 mov [setCursorPos_y], rdi
-lea rax, [bs_str4]
+lea rax, [bs_str3]
 call stdout
 mov rax, [setCursorPos_y]
 call stdout_i
-lea rax, [bs_str5]
+lea rax, [bs_str4]
 call stdout
 mov rax, [setCursorPos_x]
 call stdout_i
-lea rax, [bs_str6]
+lea rax, [bs_str5]
 call stdout
 ret
 stderr:
@@ -41,20 +41,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end6
+je .bs_logic_end5
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end6:
+.bs_logic_end5:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end10
+jle .bs_logic_end9
 mov rax, 1
 call exit
-.bs_logic_end10:
+.bs_logic_end9:
 ret
 ret
 raise:
@@ -104,31 +104,10 @@ mov [stdout_i_msg], rax
 mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
 ret
-println:
-mov [println_msg], rax
-mov rax, [println_msg]
-call stdout
-lea rax, [bs_str25]
-call stdout
-ret
 exit:
 mov [exit_eno], rax
 mov rax, [exit_eno]
 call bs_exit
-ret
-getcwd:
-call bs_getCwd
-mov [getcwd_cwd], rax
-mov rax, [getcwd_cwd]
-ret
-mkdir:
-mov [mkdir_pthName], rax
-mov rax, 83
-mov rdi, [mkdir_pthName]
-mov rsi, 777
-syscall
-push rax
-pop rax
 ret
 open:
 mov [open_pth], rax
@@ -157,12 +136,12 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jge .bs_logic_end44
+jge .bs_logic_end34
 mov rax, [fileExists_rx]
 call close
 mov rax, 1
 ret
-.bs_logic_end44:
+.bs_logic_end34:
 mov rax, 0
 ret
 pwarn:
@@ -171,16 +150,18 @@ mov rax, [pwarn_err]
 call print
 ret
 section .rodata
-STDOUT dd 1
-SYS_open dd 2
-SYS_close dd 3
-O_RDONLY dd 0
+STDOUT dq 1
+SYS_open dq 2
+SYS_close dq 3
+O_RDONLY dq 0
 section .bss
 digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
-main_test resw 4
+main_h:
+.a resw 4
+.b resw 32
 setCursorPos_x resw 4
 setCursorPos_y resw 4
 stderr_msg resw 4
@@ -196,10 +177,7 @@ prompt_prmpt resw 4
 prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
-println_msg resw 4
 exit_eno resw 4
-getcwd_cwd resw 4
-mkdir_pthName resw 4
 open_pth resw 4
 open_mode resw 4
 open_sysc resw 4
@@ -209,12 +187,12 @@ fileExists_pth resw 4
 fileExists_rx resw 4
 pwarn_err resw 4
 section .data
-bs_str2: db 116,101,115,116, 0
-bs_str4: db 27,91, 0
-bs_str5: db 59, 0
-bs_str6: db 72, 0
-bs_str25: db 10, 0
-bs_str52: db 34,27,49,98,27,91,50,74,34, 0
-bs_str53: db 34,112,111,115,105,120,34, 0
-stdinBuffSize dd 1024
-warno dd 0
+main_h.len dq 36
+bs_str1: db 10, 0
+bs_str3: db 27,91, 0
+bs_str4: db 59, 0
+bs_str5: db 72, 0
+bs_str42: db 34,27,49,98,27,91,50,74,34, 0
+bs_str43: db 34,112,111,115,105,120,34, 0
+stdinBuffSize dq 1024
+warno dq 0

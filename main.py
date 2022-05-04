@@ -11,6 +11,7 @@ def bs_main(fileName:str, output:str) -> None:
         data = f.readlines()
     ps = parse.parser(fileName, data, [fileName])
     ps.pre_parse()
+    ps.structFind()
     ps.blockify()
     cs = compiler.compiler(ps.package(),output)
     cs.compile()

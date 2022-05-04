@@ -17,6 +17,13 @@ global int stdinBuffSize 1024
 global int errno 0
 global int warno 0
 
+block mayloc int -> int
+    ## malloc (allocate memory)
+    size
+    new_ptr = 0
+    bs_malloc size new_ptr
+    return new_ptr
+end
 
 block randint int int -> int
     min max

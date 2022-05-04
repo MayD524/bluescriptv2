@@ -3,12 +3,9 @@ from pprint import pprint
 DEBUG = False
 
 BS_GENERIC_TYPES = [
-    #"char",
+    "str"
     "int",
-    "void",
-    "null",
-#    "ptr"
-    "float", ## TODO: Add support for float
+    "void"
 ]
 
 BS_MATH_OPERS = [
@@ -81,6 +78,9 @@ class parser:
                 size
             }
         """
+        ## list of structs
+        self.structs        : dict[str, dict[str]] = {}
+        
         self.variables      : dict[str, list[str]] = {}
         self.constantValues : dict[str, list[str]] = {}
         self.arrays         : dict[str, list[str]] = {}
@@ -134,6 +134,36 @@ class parser:
                 line = line.split(" ", 1)[1].strip()
                 self.externs.append(line)
                 self.livingFunctions.append(line)
+
+    def structFind(self) -> None:
+        
+        lineNo = 0
+        structName  = None
+        structStart = 0
+        structData  = []
+        
+        while lineNo < len(self.combined_data):
+            line = self.combined_data[lineNo]
+            if line.startswith("struct"):
+                assert structName is None, f"{lineNo} >> struct is already being defined!"
+                assert structName not in self.structs, f"{lineNo} >> struct is already defined!"
+                structStart = lineNo
+                structName = line.split(" ", 1)[1]
+                
+            elif structName != None and line == "end":
+                print(f"{lineNo} >> struct {structName} {structData}")
+                self.structs[structName] = structData.copy()
+                structName = None
+                structData.clear()
+                self.combined_data = self.combined_data[:structStart] + self.combined_data[lineNo+1:]
+                
+            elif structName != None:
+                dtype,vname = line.split(" ", 1)
+                dtype = self.setType(dtype)
+                line = f"{dtype} {vname}"
+                structData.append(line)
+            
+            lineNo += 1
 
     def pre_parse(self) -> None:
         self.handleIncludes()
@@ -284,7 +314,6 @@ class parser:
                 self.globalVariables[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue
-            
             #assert blockName not in self.blocks, f"Block {blockName} already exists! {lineNo}"
             next_end = self.combined_data[lineNo:].index("end" if not useSquiggly else "}")
             retType = self.setType(retType.strip()) 
@@ -316,7 +345,6 @@ class parser:
         
         self.tokenizeBlocks()
         
-    
     def typeOf(self, token:str, blockName:str) -> str:
         if token in BS_KEY_TOKENS:
             return "keyword"
@@ -398,6 +426,9 @@ class parser:
                         elif token.isnumeric() or token.startswith("0x") or token.startswith("0b") or token.startswith("0o") or (token.startswith('-') and token[1:].isnumeric()):
                             tokens.insert(token_no, "BS_INT_TOKEN")
                             skip = True
+                        elif token in self.structs:
+                            tokens.insert(token_no, "BS_STRUCT_TOKEN")
+                            skip = True
                         else:
                             #print(f"{block}:{token_no} - {token}")
                             tokens.insert(token_no, "BS_VARIABLE_TOKEN")
@@ -442,5 +473,6 @@ class parser:
             "globals": self.globalVariables,         ## all globals
             "variables": self.variables,             ## all variables
             "coreFile": self.core_file,              ## the core filename
-            "externs": self.externs                  ## all externs
+            "externs": self.externs,                 ## all externs
+            "structs": self.structs                  ## all structs
         }
