@@ -13,7 +13,8 @@ TOKEN_TYPES = [
     "BS_VARIABLE_TOKEN", 
     "BS_INT_TOKEN", 
     "BS_FLOAT_TOKEN", 
-    "BS_FUNCTION_TOKEN"
+    "BS_FUNCTION_TOKEN",
+    "BS_STRUCT_TOKEN",
 ]
 
 DEBUG = False
@@ -311,7 +312,6 @@ class compiler:
                             dt = self.package["structs"][value]
                             
                             self.compiledASM[".bss"].append(f"{varName}:")
-                            print(self.compiledASM['.bss'])
                             structSize = 0
                             for x in dt:
                                 x = x.strip()
@@ -323,7 +323,7 @@ class compiler:
                                 structSize += int(size)
                                 self.compiledASM[".bss"].append(f".{subName} resw {size}")
                                 self.package["variables"][f"{varName}.{subName}"] = [subType, "unknown"]
-                            self.compiledASM[".data"].append(f"{varName}.len dq {structSize}")
+                            self.compiledASM[".rodata"].append(f"{varName}.len dq {structSize}")
                             self.package["variables"][f"{varName}.len"] = ["int", f"{structSize}"]
                             
                             
