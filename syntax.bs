@@ -1,11 +1,10 @@
 #include libs/stdlib.bs
 #include libs/os.bs
-
+#include libs/list.bs
 block main -> int
-    a = iprompt "Number: "
-    if a == 10
-    | stdout "Hello world!\n"
-    | return 0
-    stdout "Hello I am evil!\n"
+    x = generator 0 10
+    y = sprompt "Hello, what is your name? " 24
+    print "Hello, "
+    println y
     return 0
 end

@@ -27,8 +27,6 @@ section .text
     pop rax
 %endmacro
 
-extern malloc
-
 bs_clearStdin:
     .core:
     xor rax, rax
@@ -41,18 +39,19 @@ bs_clearStdin:
     ret
 
 bs_malloc:
-    ; rax = size
-    mov rdi, rax
-    xor rax, rax
-    call malloc
-    test rax, rax
-    jz .bs_malloc_end
-    ret
+    push rax
+    mov rax, 12
+    xor rdi, rdi
+    syscall
+    push rax
 
-    .bs_malloc_end:
-    mov rax, 0
-    ret
-
+    mov rax, 12
+    pop rdi
+    pop rsi
+    add rdi, rsi
+    syscall
+    ret ; rax = address of malloc'd memory
+    
 bs_random:
     ; max in rax
     mov rbx, rax

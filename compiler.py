@@ -6,8 +6,6 @@ import sys
 IS_DEBUG = True
 os_name = "posix" if IS_DEBUG else os.name
 
-FUNCTION_MAIN_NAME = "main:"
-
 TOKEN_TYPES = [
     "BS_STRING_TOKEN_AHOY", 
     "BS_VARIABLE_TOKEN", 
@@ -172,7 +170,10 @@ class compiler:
     
     def isVariable(self, name:str) -> bool:
         if name.isnumeric(): return False
-        return True if self.getExtention(name) is not False else False
+        ext = self.getExtention(name)
+        if ext in ["variables", "constants", "globals", "arrays"]:
+            return True
+        return False
     
     def strExists(self, data:str) -> str|None:
         for ext in self.compiledASM[".data"]:
@@ -600,7 +601,9 @@ class compiler:
                     
                     case 27: ## goto
                         gotoPoint = line[token_no+2]
-                        if self.isVariable(gotoPoint):
+                        print(gotoPoint)
+                        print(self.isVariable(gotoPoint))
+                        if self.isVariable(gotoPoint) and "bsDo_" not in gotoPoint:
                             self.compiledASM[".text"].append(f"mov rax, [{gotoPoint}]\njmp rax")
                         else:
                             self.compiledASM[".text"].append(f"jmp .{line[token_no+2]}")
@@ -703,7 +706,7 @@ class compiler:
             hasReturned = False
             requireReturn = False if self.package["blocks"][block]["retType"] == "void" else True
             
-            self.compiledASM[".text"].append(f"{block}:" if block != "main" else FUNCTION_MAIN_NAME)
+            self.compiledASM[".text"].append(f"{block}:")
             if block == "main" and self.package["blocks"][block]["retType"] != "int":
                 raise Exception("main function must return int")
 
@@ -834,8 +837,9 @@ class compiler:
         ## now to join the sections
         includes = '\n'.join([f'%include "{f}"' for f in self.package["includedFiles"] if f.endswith(".asm") or f.endswith('.s')])
         externs = '\n'.join([f'extern {f}' for f in self.package["externs"]])
-        compiled = f"global {FUNCTION_MAIN_NAME} ; the start we expect\n{includes}\n{externs}\n"
+        compiled = f"global _start ; the start we expect\n{includes}\n{externs}\n"
         self.removeUnusedVariables()
+        self.compiledASM[".text"].insert(0, "_start: call main\n mov rax, 60\n xor rdi, rdi\n syscall")
         for section in self.compiledASM:
             if self.compiledASM[section] != []:
                 compiled += f"\nsection {section}\n"
@@ -863,5 +867,5 @@ class compiler:
         if os_name == "nt":
             print(f"nasm -fwin64 {self.outFile} && gcc {self.outFile.replace('.asm', '.obj')} -o {self.outFile.replace('.asm', '.exe')} && ./{self.outFile.replace('.asm', '.exe')}")
             return compiled
-        print(f"nasm -felf64 {self.outFile} && gcc -no-pie {self.outFile.replace('.asm', '.o')} -o {self.outFile.replace('.asm', '.out')} && ./{self.outFile.replace('.asm', '.out')}")
+        print(f"nasm -felf64 {self.outFile} && ld {self.outFile.replace('.asm', '.o')} -o {self.outFile.replace('.asm', '.out')} && ./{self.outFile.replace('.asm', '.out')}")
         return compiled
