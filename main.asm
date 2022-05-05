@@ -17,14 +17,33 @@ mov rax, 0
 mov rdi, 10
 call generator
 mov [main_x], rax
-lea rax, [bs_str4]
-mov rdi, 24
-call sprompt
-mov [main_y], rax
-lea rax, [bs_str5]
-call print
-mov rax, [main_y]
-call println
+mov rax, 0
+mov [main_i], rax
+.main_bsDo_3:
+mov rax, [main_x]
+mov rdi, [main_i]
+call li_get
+mov [main_op], rax
+mov rax, [main_op]
+call stdout_i
+lea rax, [bs_str8]
+call stdout
+mov rax, [main_i]
+add rax, 1
+mov [main_i], rax
+mov rax, [main_i]
+mov rdx, 11
+cmp rax, rdx
+jge .bs_logic_end9
+jmp .main_bsDo_3
+.bs_logic_end9:
+mov rax, [main_x]
+call li_size
+mov [main_size], rax
+mov rax, [main_size]
+call stdout_i
+lea rax, [bs_str17]
+call stdout
 mov rax, 0
 ret
 mov rax, 0
@@ -32,15 +51,15 @@ ret
 setCursorPos:
 mov [setCursorPos_x], rax
 mov [setCursorPos_y], rdi
-lea rax, [bs_str7]
+lea rax, [bs_str19]
 call stdout
 mov rax, [setCursorPos_y]
 call stdout_i
-lea rax, [bs_str8]
+lea rax, [bs_str20]
 call stdout
 mov rax, [setCursorPos_x]
 call stdout_i
-lea rax, [bs_str9]
+lea rax, [bs_str21]
 call stdout
 ret
 stderr:
@@ -52,20 +71,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end9
+je .bs_logic_end21
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end9:
+.bs_logic_end21:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end13
+jle .bs_logic_end25
 mov rax, 1
 call exit
-.bs_logic_end13:
+.bs_logic_end25:
 ret
 ret
 raise:
@@ -115,13 +134,6 @@ mov [stdout_i_msg], rax
 mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
 ret
-println:
-mov [println_msg], rax
-mov rax, [println_msg]
-call stdout
-lea rax, [bs_str28]
-call stdout
-ret
 exit:
 mov [exit_eno], rax
 mov rax, [exit_eno]
@@ -144,11 +156,11 @@ mov [li_insert_size], rax
 mov rax, [li_insert_index]
 mov rdx, [li_insert_size]
 cmp rax, rdx
-jle .bs_logic_end34
-lea rax, [bs_str37]
+jle .bs_logic_end46
+lea rax, [bs_str49]
 call raise
 ret
-.bs_logic_end34:
+.bs_logic_end46:
 mov rax, [li_insert_pr]
 mov rdi, [li_insert_index]
 call li_get
@@ -156,9 +168,9 @@ mov [li_insert_x], rax
 mov rax, [li_insert_x]
 mov rdx, [BS_ENDOF_LIST]
 cmp rax, rdx
-jne .bs_logic_end40
+jne .bs_logic_end52
 ret
-.bs_logic_end40:
+.bs_logic_end52:
 mov rax, [li_insert_pr]
 mov rdi, [li_insert_value]
 mov rsi, [li_insert_index]
@@ -168,15 +180,6 @@ li_get:
 mov [li_get_pr], rax
 mov [li_get_index], rdi
 mov rax, [li_get_pr]
-call li_size
-mov [li_get_sz], rax
-mov rax, [li_get_index]
-mov rdx, [li_get_sz]
-cmp rax, rdx
-jl .bs_logic_end45
-ret
-.bs_logic_end45:
-mov rax, [li_get_pr]
 mov rdi, [li_get_index]
 call bs_get
 mov [li_get_got], rax
@@ -184,14 +187,28 @@ mov rax, [li_get_got]
 ret
 li_size:
 mov [li_size_pr], rax
-mov rax, [li_size_pr]
-call bs_length
+mov rax, 0
 mov [li_size_sz], rax
+mov rax, 0
+mov [li_size_current], rax
+.li_size_bsDo_308:
+mov rax, [li_size_pr]
+mov rdi, [li_size_sz]
+call bs_get
+mov [li_size_current], rax
 mov rax, [li_size_sz]
-mov rdx, 0
+add rax, 1
+mov [li_size_sz], rax
+mov rax, [li_size_current]
+mov rdx, [BS_ENDOF_LIST]
+cmp rax, rdx
+je .bs_logic_end67
+jmp .li_size_bsDo_308
+.bs_logic_end67:
 mov rax, [li_size_sz]
-mov rcx, 8
-div rcx
+mov rax, [li_size_sz]
+mov rbx, 1
+sub rax, rbx
 mov [li_size_sz], rax
 mov rax, [li_size_sz]
 ret
@@ -212,7 +229,7 @@ mov rax, 0
 mov [generator_index], rax
 mov rax, [generator_start]
 mov [generator_value], rax
-.generator_bsDo_336:
+.generator_bsDo_347:
 mov rax, [generator_newLi]
 mov rdi, [generator_value]
 mov rsi, [generator_index]
@@ -226,9 +243,9 @@ mov [generator_value], rax
 mov rax, [generator_index]
 mov rdx, [generator_dif]
 cmp rax, rdx
-jg .bs_logic_end70
-jmp .generator_bsDo_336
-.bs_logic_end70:
+jg .bs_logic_end87
+jmp .generator_bsDo_347
+.bs_logic_end87:
 mov rax, [generator_newLi]
 ret
 open:
@@ -258,12 +275,12 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jge .bs_logic_end88
+jge .bs_logic_end105
 mov rax, [fileExists_rx]
 call close
 mov rax, 1
 ret
-.bs_logic_end88:
+.bs_logic_end105:
 mov rax, 0
 ret
 pwarn:
@@ -272,7 +289,6 @@ mov rax, [pwarn_err]
 call print
 ret
 section .rodata
-bs_str48 dd "BS_ENDOF_LIST", 0
 STDOUT dq 1
 BS_ENDOF_LIST dq 0xFFFF
 SYS_open dq 2
@@ -284,7 +300,9 @@ digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
 main_x resw 4
-main_y resw 4
+main_i resw 4
+main_op resw 4
+main_size resw 4
 setCursorPos_x resw 4
 setCursorPos_y resw 4
 stderr_msg resw 4
@@ -300,7 +318,6 @@ prompt_prmpt resw 4
 prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
-println_msg resw 4
 exit_eno resw 4
 List_size resw 4
 List_pr resw 4
@@ -311,10 +328,10 @@ li_insert_size resw 4
 li_insert_x resw 4
 li_get_pr resw 4
 li_get_index resw 4
-li_get_sz resw 4
 li_get_got resw 4
 li_size_pr resw 4
 li_size_sz resw 4
+li_size_current resw 4
 generator_start resw 4
 generator_max resw 4
 generator_dif resw 4
@@ -330,14 +347,13 @@ fileExists_pth resw 4
 fileExists_rx resw 4
 pwarn_err resw 4
 section .data
-bs_str4: db 72,101,108,108,111,44,32,119,104,97,116,32,105,115,32,121,111,117,114,32,110,97,109,101,63,32, 0
-bs_str5: db 72,101,108,108,111,44,32, 0
-bs_str7: db 27,91, 0
-bs_str8: db 59, 0
-bs_str9: db 72, 0
-bs_str28: db 10, 0
-bs_str37: db 108,105,95,105,110,115,101,114,116,58,32,105,110,100,101,120,32,111,117,116,32,111,102,32,114,97,110,103,101,10, 0
-bs_str96: db 34,27,49,98,27,91,50,74,34, 0
-bs_str97: db 34,112,111,115,105,120,34, 0
+bs_str8: db 10, 0
+bs_str17: db 10, 0
+bs_str19: db 27,91, 0
+bs_str20: db 59, 0
+bs_str21: db 72, 0
+bs_str49: db 108,105,95,105,110,115,101,114,116,58,32,105,110,100,101,120,32,111,117,116,32,111,102,32,114,97,110,103,101,10, 0
+bs_str113: db 34,27,49,98,27,91,50,74,34, 0
+bs_str114: db 34,112,111,115,105,120,34, 0
 stdinBuffSize dq 1024
 warno dq 0

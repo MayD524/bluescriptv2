@@ -35,9 +35,9 @@ end
 
 block li_get ptr int -> int
     pr index
-    sz = li_size pr
-    if index >= sz
-    | return BS_ENDOF_LIST
+    #sz = li_size pr
+    #if index >= sz
+    #| return BS_ENDOF_LIST
     got = bs_get pr index
     return got
 end
@@ -52,14 +52,19 @@ end
 
 block li_size ptr -> int
     pr
-    sz = bs_length pr
-    sz / 8
+    sz = 0
+    current = 0
+    do 
+        current = bs_get pr sz
+        sz + 1
+    while current != BS_ENDOF_LIST
+    sz - 1
     return sz
 end
 
 block li_eol ptr -> int
     pr
-    sz = bs_length pr
+    sz = li_size pr
     ## get the last element
     sz - 1
     lastElm = li_get pr sz
