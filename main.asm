@@ -10,39 +10,75 @@ _start: call main
 mov rax, 60
 xor rdi, rdi
 syscall
+testFunc:
+mov [testFunc_a], rax
+mov rax, [testFunc_a]
+mov rdx, 0
+cmp rax, rdx
+jne .bs_logic_end0
+mov rax, 1
+ret
+.bs_logic_end0:
+mov rax, 0
+ret
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
+mov rax, 0
+mov [main_x], rax
+mov rax, [main_x]
+call testFunc
+push rax
+pop rax
+mov rdx, 0
+cmp rax, rdx
+jne .bs_logic_end6
+lea rax, [bs_str7]
+call println
+.bs_logic_end6:
+mov rax, [main_x]
+call testFunc
+push rax
+pop rax
+mov rdx, 1
+cmp rax, rdx
+jne .bs_logic_end8
+lea rax, [bs_str9]
+call println
+.bs_logic_end8:
 mov rax, 0
 mov rdi, 10
 call generator
 mov [main_x], rax
 mov rax, 0
 mov [main_i], rax
-.main_bsDo_3:
+.main_bsDo_16:
 mov rax, [main_x]
 mov rdi, [main_i]
 call li_get
 mov [main_op], rax
 mov rax, [main_op]
 call stdout_i
-lea rax, [bs_str8]
+lea rax, [bs_str17]
 call stdout
 mov rax, [main_i]
 add rax, 1
 mov [main_i], rax
-mov rax, [main_i]
-mov rdx, 11
+mov rax, [main_x]
+call li_size
+push rax
+pop rax
+mov rdx, [main_i]
 cmp rax, rdx
-jge .bs_logic_end9
-jmp .main_bsDo_3
-.bs_logic_end9:
+jle .bs_logic_end18
+jmp .main_bsDo_16
+.bs_logic_end18:
 mov rax, [main_x]
 call li_size
 mov [main_size], rax
 mov rax, [main_size]
 call stdout_i
-lea rax, [bs_str17]
+lea rax, [bs_str24]
 call stdout
 mov rax, 0
 ret
@@ -51,15 +87,15 @@ ret
 setCursorPos:
 mov [setCursorPos_x], rax
 mov [setCursorPos_y], rdi
-lea rax, [bs_str19]
+lea rax, [bs_str26]
 call stdout
 mov rax, [setCursorPos_y]
 call stdout_i
-lea rax, [bs_str20]
+lea rax, [bs_str27]
 call stdout
 mov rax, [setCursorPos_x]
 call stdout_i
-lea rax, [bs_str21]
+lea rax, [bs_str28]
 call stdout
 ret
 stderr:
@@ -71,20 +107,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end21
+je .bs_logic_end28
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end21:
+.bs_logic_end28:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end25
+jle .bs_logic_end30
 mov rax, 1
 call exit
-.bs_logic_end25:
+.bs_logic_end30:
 ret
 ret
 raise:
@@ -134,6 +170,13 @@ mov [stdout_i_msg], rax
 mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
 ret
+println:
+mov [println_msg], rax
+mov rax, [println_msg]
+call stdout
+lea rax, [bs_str43]
+call stdout
+ret
 exit:
 mov [exit_eno], rax
 mov rax, [exit_eno]
@@ -156,11 +199,11 @@ mov [li_insert_size], rax
 mov rax, [li_insert_index]
 mov rdx, [li_insert_size]
 cmp rax, rdx
-jle .bs_logic_end46
-lea rax, [bs_str49]
+jle .bs_logic_end49
+lea rax, [bs_str50]
 call raise
 ret
-.bs_logic_end46:
+.bs_logic_end49:
 mov rax, [li_insert_pr]
 mov rdi, [li_insert_index]
 call li_get
@@ -168,9 +211,9 @@ mov [li_insert_x], rax
 mov rax, [li_insert_x]
 mov rdx, [BS_ENDOF_LIST]
 cmp rax, rdx
-jne .bs_logic_end52
+jne .bs_logic_end53
 ret
-.bs_logic_end52:
+.bs_logic_end53:
 mov rax, [li_insert_pr]
 mov rdi, [li_insert_value]
 mov rsi, [li_insert_index]
@@ -191,7 +234,7 @@ mov rax, 0
 mov [li_size_sz], rax
 mov rax, 0
 mov [li_size_current], rax
-.li_size_bsDo_308:
+.li_size_bsDo_324:
 mov rax, [li_size_pr]
 mov rdi, [li_size_sz]
 call bs_get
@@ -202,9 +245,9 @@ mov [li_size_sz], rax
 mov rax, [li_size_current]
 mov rdx, [BS_ENDOF_LIST]
 cmp rax, rdx
-je .bs_logic_end67
-jmp .li_size_bsDo_308
-.bs_logic_end67:
+je .bs_logic_end66
+jmp .li_size_bsDo_324
+.bs_logic_end66:
 mov rax, [li_size_sz]
 mov rax, [li_size_sz]
 mov rbx, 1
@@ -229,7 +272,7 @@ mov rax, 0
 mov [generator_index], rax
 mov rax, [generator_start]
 mov [generator_value], rax
-.generator_bsDo_347:
+.generator_bsDo_363:
 mov rax, [generator_newLi]
 mov rdi, [generator_value]
 mov rsi, [generator_index]
@@ -243,9 +286,9 @@ mov [generator_value], rax
 mov rax, [generator_index]
 mov rdx, [generator_dif]
 cmp rax, rdx
-jg .bs_logic_end87
-jmp .generator_bsDo_347
-.bs_logic_end87:
+jg .bs_logic_end84
+jmp .generator_bsDo_363
+.bs_logic_end84:
 mov rax, [generator_newLi]
 ret
 open:
@@ -275,12 +318,12 @@ mov [fileExists_rx], rax
 mov rax, [fileExists_rx]
 mov rdx, 100
 cmp rax, rdx
-jge .bs_logic_end105
+jge .bs_logic_end100
 mov rax, [fileExists_rx]
 call close
 mov rax, 1
 ret
-.bs_logic_end105:
+.bs_logic_end100:
 mov rax, 0
 ret
 pwarn:
@@ -299,6 +342,7 @@ digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
+testFunc_a resw 4
 main_x resw 4
 main_i resw 4
 main_op resw 4
@@ -318,6 +362,7 @@ prompt_prmpt resw 4
 prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
+println_msg resw 4
 exit_eno resw 4
 List_size resw 4
 List_pr resw 4
@@ -347,13 +392,19 @@ fileExists_pth resw 4
 fileExists_rx resw 4
 pwarn_err resw 4
 section .data
-bs_str8: db 10, 0
+bs_str6: db 116,101,115,116,70,117,110,99, 0
+bs_str7: db 89,65,89,33, 0
+bs_str8: db 116,101,115,116,70,117,110,99, 0
+bs_str9: db 78,79,79,33, 0
 bs_str17: db 10, 0
-bs_str19: db 27,91, 0
-bs_str20: db 59, 0
-bs_str21: db 72, 0
-bs_str49: db 108,105,95,105,110,115,101,114,116,58,32,105,110,100,101,120,32,111,117,116,32,111,102,32,114,97,110,103,101,10, 0
-bs_str113: db 34,27,49,98,27,91,50,74,34, 0
-bs_str114: db 34,112,111,115,105,120,34, 0
+bs_str18: db 108,105,95,115,105,122,101, 0
+bs_str24: db 10, 0
+bs_str26: db 27,91, 0
+bs_str27: db 59, 0
+bs_str28: db 72, 0
+bs_str43: db 10, 0
+bs_str50: db 108,105,95,105,110,115,101,114,116,58,32,105,110,100,101,120,32,111,117,116,32,111,102,32,114,97,110,103,101,10, 0
+bs_str106: db 34,27,49,98,27,91,50,74,34, 0
+bs_str107: db 34,112,111,115,105,120,34, 0
 stdinBuffSize dq 1024
 warno dq 0

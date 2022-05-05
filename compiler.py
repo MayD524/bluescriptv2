@@ -566,9 +566,38 @@ class compiler:
             elif isinstance(token, int):
                 match token:
                     case 0: ## if:
+                        if name == "main": print(line)
                         cmp1 = line[token_no+2]
-                        mode = line[token_no+3]
-                        cmp2 = line[token_no+5]
+                        nextArgs = 3
+                        funcCalls = 0
+                        mode = 0
+                        if line[token_no+1] is not "BS_FUNCTION_TOKEN":
+                            mode = line[token_no+nextArgs]
+                        else:
+                            ## get the index of the first int type in line
+                            for x in range(1, len(line)):
+                                if isinstance(line[x], int):
+                                    nextArgs = x
+                                    mode = line[x]
+                                    break
+                            funcCalls += 1
+                            args = line[3:nextArgs]
+                            if args == []:
+                                self.compiledASM[".text"].append(f"call {cmp1}")
+                            else:
+                                regIndex = 0 if cmp1 not in self.package["externs"] else 1
+                                for arg in args:
+                                    if arg in TOKEN_TYPES:
+                                        continue
+                                    if self.isVariable(arg):
+                                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{arg}]")
+                                    else:
+                                        self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
+                                    regIndex += 1
+                                self.compiledASM[".text"].append(f"call {cmp1}")
+
+                            self.compiledASM[".text"].append("push rax")
+                        cmp2 = line[token_no+nextArgs+2]
                         
                         mode += 1 if mode % 2 == 0 else -1
                         
@@ -581,28 +610,74 @@ class compiler:
                         elif self.typeOf(cmp1) == "str":
                             strName = self.allocStr(cmp1)
                             cmp1 = f"[{strName}]"
-
+                        elif line[token_no+nextArgs] == "BS_FUNCTION_TOKEN":
+                            ## func call
+                            ## get the index of the first int type in line
+                            for x in range(len(line)):
+                                if isinstance(line[x], int):
+                                    nextArgs = x
+                                    break
+                                funcCalls += 1
+                                args = line[3:nextArgs]
+                                if args == []:
+                                    self.compiledASM[".text"].append(f"call {cmp1}")
+                                else:
+                                    regIndex = 0 if cmp1 not in self.package["externs"] else 1
+                                    for arg in args:
+                                        if arg in TOKEN_TYPES:
+                                            continue
+                                        if self.isVariable(arg):
+                                            self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{arg}]")
+                                        else:
+                                            self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
+                                        regIndex += 1
+                                    self.compiledASM[".text"].append(f"call {cmp1}")
+                                self.compiledASM[".text"].append("push rax")
+                            
                         if self.isVariable(cmp2):
                             cmp2 = f"[{cmp2}]"
                         elif self.typeOf(cmp2) == "str":
                             strName = self.allocStr(cmp2)
                             cmp2 = f"[{strName}]"
-                        
+                        elif line[token_no+nextArgs+1] == "BS_FUNCTION_TOKEN":
+                            ## func call
+                            for x in range(len(line)):
+                                if isinstance(line[x], int):
+                                    nextArgs = x
+                                    break
+                                funcCalls += 2
+                                args = line[token_no+4:len(line)]
+                                if args == []:
+                                    self.compiledASM[".text"].append(f"call {cmp2}")
+                                else:
+                                    regIndex = 0 if cmp2 not in self.package["externs"] else 1
+                                    for arg in args:
+                                        if arg in TOKEN_TYPES:
+                                            continue
+                                        if self.isVariable(arg):
+                                            self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, [{arg}]")
+                                        else:
+                                            self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
+                                        regIndex += 1
+                                    self.compiledASM[".text"].append(f"call {cmp2}")
+                                cmp2 = 'rax'
                         
                         self.logicEndLabel.append(f".bs_logic_end{self.global_token_id}")
                         self.inLogicDecl   = True
                         ## move cmp1 to rax and cmp2 to rdx
-                        self.compiledASM[".text"].append(f"mov rax, {cmp1}\nmov rdx, {cmp2}")
+                        if funcCalls == 0:
+                            self.compiledASM[".text"].append(f"mov rax, {cmp1}\nmov rdx, {cmp2}")
+                        elif funcCalls == 1:
+                            self.compiledASM[".text"].append(f"pop rax\nmov rdx, {cmp2}")
+                        elif funcCalls % 2:
+                            self.compiledASM[".text"].append(f"mov rdx, {cmp2}\nmov rax, {cmp1}")
+                        elif funcCalls == 3:
+                            self.compiledASM[".text"].append(f"mov rdx, {cmp2}\npop rax")
                         self.compiledASM[".text"].append(f"cmp rax, rdx\n{mode} {self.logicEndLabel[-1]}")
                         
-                    ## TODO: else statements (maybe?)
-                    #case 1: ## else:
-                    #    self.logicEndLabel = f"bs_logic_end{self.global_token_id}"
-                    
+                        return
                     case 27: ## goto
                         gotoPoint = line[token_no+2]
-                        print(gotoPoint)
-                        print(self.isVariable(gotoPoint))
                         if self.isVariable(gotoPoint) and "bsDo_" not in gotoPoint:
                             self.compiledASM[".text"].append(f"mov rax, [{gotoPoint}]\njmp rax")
                         else:
