@@ -1,31 +1,45 @@
-#use libs/asm/float.asm
-
-block bsfloat int int -> float
-    whole decimal 
-    pr = bs_makeFloat
-    bs_fiSet pr whole decimal
-    return pr
+struct float_t 
+    int whole
+    int decimal
 end
 
-block fimul ptr int -> float
+block fimul *float_t int -> float_t
     pr val
-    pr = bs_fiMul pr val
+    decimal = pr.decimal
+    decimal * 10
+    pr.decimal * val
+
+    ## calculate the whole
+    pr.whole * val
+
+    ## check if we carry any digits
+    if pr.decimal < decimal
+    | return pr
+
+    do 
+        pr.decimal / 10
+        pr.whole + 1
+
+    while pr.decimal > decimal
+
     return pr
 end
 
-block fiadd float int -> float
+block fiadd *float_t int -> float_t
     pr val
-    pr = bs_fiAdd pr val
+    pr.whole + val
     return pr
 end
 
-block fisub float int -> float
+block fisub *float_t int -> float_t
     pr val
-    pr = bs_fiSub pr val
+    pr.whole - val
     return pr
 end
 
-block stdout_f float -> void
+block stdout_f *float_t -> void
     pr
-    bs_stdoutf pr
+    stdout_i pr.whole
+    stdout "."
+    stdout_i pr.decimal
 end

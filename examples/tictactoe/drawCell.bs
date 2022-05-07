@@ -138,6 +138,6 @@ block updateCell int int -> int
 end
 
 block init 
-    liPtr = List 9
-    gameState + liPtr
+    liPtr = li_times 9
+    gameState = liPtr
 end

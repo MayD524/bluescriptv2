@@ -31,6 +31,11 @@ BS_KEY_TOKENS = {
     "float" : 6,
     "return": 7,
     
+    "*="     : 8,
+    "-="     : 9,
+    "+="     : 10,
+    "/="     : 11,
+    
     "*"     : 8,
     "-"     : 9,
     "+"     : 10,
@@ -259,6 +264,8 @@ class parser:
             return "int"
         elif typeName == "int":
             return "int"
+        elif typeName in self.structs:
+            return "int" ## ptr to struct
         return typeName
     
     def blockify(self) -> None:
@@ -267,7 +274,7 @@ class parser:
             easier for parsing later
         """
         lineNo = 0
-        while lineNo < len(self.combined_data):
+        while lineNo < len(self.combined_data):         
             line = self.combined_data[lineNo]
             useSquiggly = False
             if line.startswith("block"):
@@ -288,11 +295,15 @@ class parser:
                 
                 for i in range(len(args)):
                     args[i] = args[i].replace(",", "").strip()
-                    if "|" in args[i]:
-                        args[i] = "|".join([self.setType(x) for x in args[i].split("|")])
-                    args[i] = self.setType(args[i])
                     if args[i] == "":
                         args.pop(i)
+                    elif "|" in args[i]:
+                        args[i] = "|".join([self.setType(x) for x in args[i].split("|")])
+                    elif "*" not in args[i]:
+                        args[i] = self.setType(args[i])
+                    else:
+                        args[i] = args[i].replace("*", "")
+                    
                 if len(args) == 0:
                     args.append("void")
                 argc = len(args)

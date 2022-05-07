@@ -1,0 +1,29 @@
+#include libs/stdlib.bs
+#include libs/math.bs
+
+const int MAX_SIZE 100
+
+block fizzbuzz int
+    cur
+    m5 = mod cur 5
+    m3 = mod cur 3
+    if m5 == 0
+    | if m3 == 0
+    | | println "FizzBuzz"
+    | | return
+    | println "Buzz"
+    | return
+    if m3 == 0
+    | println "Fizz"
+    | return
+    stdout_i cur
+end
+
+block main -> int 
+    cur = 0
+    do
+        fizzbuzz cur
+        cur + 1
+    while cur < MAX_SIZE
+    return 0
+end

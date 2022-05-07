@@ -152,10 +152,10 @@ block atoi str -> int
     return in
 end
 
-block putc char {
+block putc char
     chr
     bluescript2_unix_putc chr 1
-}
+end
 
 ## a sized prompt call (for input)
 block sprompt str int -> str
@@ -185,9 +185,17 @@ block print str -> void
     stdout msg
 end
 
+## print a number as an unsigned int
 block stdout_i int -> void
     msg
     bluescript2_numeric_print msg
+end
+
+## writes a newline to stdout
+block stdout_in int
+    i
+    stdout_i i
+    stdout "\n"
 end
 
 block println str -> void
