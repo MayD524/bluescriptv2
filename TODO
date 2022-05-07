@@ -66,6 +66,8 @@ Todo:
         - shorts/longs
     - multi-returns
     - stack movements
+    - rework structs
+        - memory objects instead of labels
 
 Maybe:
     - nesting

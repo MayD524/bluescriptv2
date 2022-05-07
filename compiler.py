@@ -85,6 +85,18 @@ class compiler:
         
         self.totalMemory = 0
     
+    def tokenToType(self, token:str) -> str:
+        assert token in TOKEN_TYPES, f"{self.currentFunName}:{self.currentLineNo} >> {token} is not a valid token"
+        match token:
+            case "BS_STRING_TOKEN_AHOY":
+                return "str"
+            case "BS_VARIABLE_TOKEN":
+                return "int"
+            case "BS_INT_TOKEN":
+                return "int"
+            case _:
+                assert False, f"{self.currentFunName}:{self.currentLineNo} >> {token} is not a valid token"
+    
     def isAlloced(self, name:str) -> bool:
         if "." in name:
             ## TODO: Don't blindly assume
@@ -97,14 +109,29 @@ class compiler:
                 return True
         return False
     
-    def allocSpace(self, name:str, dtype:str, size:int=4) -> None:
+    def allocSpace(self, name:str, dtype:str, size:int=2) -> None:
         if name in self.package["globals"]: return
         if name in self.package["arrays"]: return
         if self.isAlloced(name): return
+        
+        if size == 2:
+            ## check if length is defined (self.package[ext][name][3])
+            if "$" in name:
+                ext = self.getExtention(name)
+                cpy = self.package[ext][name].copy()
+                ## remove name from package
+                del self.package[ext][name]
+                name, size = name.split("$")
+                cpy[2], cpy[3] = True, size
+                self.package[ext][name] = cpy
+                self.compiledASM[".bss"].append(f"{name} resw {size}")
+                return 
         if dtype == "int" or dtype == "BS_INT_TOKEN" and name not in self.package["arrays"]:
-            self.compiledASM[".bss"].append(f"{name} resw {size} ; stores {size*16}-bit int")
-        elif dtype == "ptr":
-            self.compiledASM[".bss"].append(f"{name} resb {size} ; stores {size*8}-bit ptr")
+            self.compiledASM[".bss"].append(f"{name} resw 2 ; stores {2*16}-bit int")
+        elif dtype == "short":
+            self.compiledASM[".bss"].append(f"{name} resw 1 ; stores {1*16}-bit int")
+        elif dtype == "long":
+            self.compiledASM[".bss"].append(f"{name} resw 4 ; stores {4*16}-bit int")
         elif dtype == "str" or dtype == "BS_STRING_TOKEN_AHOY":
             self.compiledASM[".bss"].append(f"{name} resw {size} ; stores char")
 
@@ -295,7 +322,9 @@ class compiler:
                         incToken = 4
                     
                     if mode == 12: ## assign
+                        
                         size = -1
+                        atIndex = False
                         if '[' in varName and ']' in varName :
                             varName, size = varName.split("[")
                             vardatacopy = self.package[ext][varName]
@@ -308,6 +337,14 @@ class compiler:
                             self.package[ext][varName] = vardatacopy
                             self.package[ext][varName][0] = dType
                         
+                        elif "@" in varName:
+                            varName, size = varName.split("@")
+                            atIndex = True
+                            vardatacopy = self.package[ext][varName]
+                            del self.package[ext][varName]
+                            self.package[ext][varName] = vardatacopy
+                            self.package[ext][varName][0] = dType
+                            
                         if dType == "BS_STRUCT_TOKEN":
                             assert value in self.package["structs"], f"{name}:{lineNo} struct {value} not found"
                             dt = self.package["structs"][value]
@@ -327,19 +364,22 @@ class compiler:
                             self.compiledASM[".rodata"].append(f"{varName}.len dq {structSize}")
                             self.package["variables"][f"{varName}.len"] = ["int", f"{structSize}"]
                             
-                            
                         elif dType != "BS_STRING_TOKEN_AHOY":
                             vsize = -1 if '[' not in value and ']' not in value else int(value.split('[')[1].replace(']',''))
                             if vsize != -1:
                                 value = value.split('[')[0].replace(']','')
                                 dType = self.typeOf(value)
                             self.package[ext][varName] = [self.typeOf(value), value if ext != "arrays" else self.package[ext][varName][1], False, size] if len(self.package[ext][varName]) == 2 else self.package[ext][varName]
-                            if self.isVariable(value):
+                            if self.isVariable(value) and not "@" in value:
                                 value = f"[{value}]" if vsize == -1 else f"[{value}+{vsize}*8]"
-                            dType = self.typeOf(value.replace("[", "").replace("]", ""))
+                            
+                            elif "@" in value and self.isVariable(value.split('@')[0]):
+                                value, vsize = value.split('@')
+                                value = f"[{value}+{vsize}]"
+                            #dType = self.typeOf(value.replace("[", "").replace("]", ""))
                             
                             if not self.package[ext][varName][2]:
-                                if size != -1 and ext != "arrays": ## make an array
+                                if size != -1 and not atIndex and ext != "arrays": ## make an array
                                     dt = [x for x in line[token_no+3:] if x not in TOKEN_TYPES]
                                     dt = len(dt) if isinstance(dt, str) or isinstance(dt, list) else dt
                                     
@@ -348,19 +388,26 @@ class compiler:
                                             dt.append(0)
                                     data = ','.join([str(x) for x in dt])
                                     self.compiledASM[".data"].append(f"{varName} dq {data}")
+                                elif atIndex:
+                                    self.compiledASM['.text'].append(f"mov rax, {value}")
+                                    self.compiledASM['.text'].append(f"mov [{varName}+{size}], rax")
                                 else:
                                     if vsize != -1:
                                         if '+' in value:
                                             dType = self.typeOf(value if '+' not in value else value.split('+')[0].replace("[", ''))
                                         else:
                                             dType = self.typeOf(value.replace("[", '').replace("]", ''))
-                                        self.compiledASM[".text"].append(f"mov rax, {value}\nmov [{varName}], rax")
+                                        tmpName = varName if "$" not in varName else varName.split("$")[0]
+                                        self.compiledASM[".text"].append(f"mov rax, {value}\nmov [{tmpName}], rax")
                                     else:
+                                        tmpName = varName if "$" not in varName else varName.split("$")[0]
                                         self.compiledASM[".text"].append(f"mov rax, {value}")
-                                        self.compiledASM[".text"].append(f'mov [{varName}], rax')
+                                        self.compiledASM[".text"].append(f'mov [{tmpName}], rax')
                                     
                                     if len(self.package[ext][varName]) < 2 or not self.package[ext][varName][2]:
                                         self.allocSpace(varName, dType)
+                                        if "$" in varName:
+                                            varName, size = varName.split("$")
                                     self.package[ext][varName][0] = dType
                                     self.package[ext][varName][2] = True
                                     self.package[ext][varName][1] = value if ext != "arrays" else self.package[ext][varName][1]
@@ -371,7 +418,7 @@ class compiler:
                                 if size != -1:
                                     if f"{name}_{size}" in self.package["variables"]:
                                         size = f"{name}_{size}"
-                                    varName = f"{varName}+{size}*8"
+                                    varName = f"{varName}+{size}*8" if not atIndex else f"{varName}+{size}"
                                 self.compiledASM[".text"].append(f"mov rax, {value}")
                                 self.compiledASM[".text"].append(f'mov [{varName}], rax')
                                 token_no += 1
@@ -477,6 +524,7 @@ class compiler:
                 loc_argc = len(loc_args)
                 if nextFun not in self.package["livingFunctions"]:
                     raise Exception(f"function {nextFun} not found")
+                if nextFun in self.package["blocks"] : print(nextFun, self.package["blocks"][nextFun]["retType"])
                 
                 if nextFun not in self.package["blocks"]:
                     ## raw call to functions
@@ -493,6 +541,7 @@ class compiler:
                             self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {arg}")
                         regIndex += 1
                     self.compiledASM['.text'].append(f"call {nextFun}")
+                    
                     if needReturnValue:
                         self.package[self.getExtention(returnVarName)][returnVarName][0] = self.package["blocks"][name]["retType"]
                         if os_name == "nt" and regIndex == 1:
@@ -512,11 +561,14 @@ class compiler:
                         returnVarName   = ""
                         needReturnValue = False
                     break
+                
                 if functionData["argc"] != loc_argc // 2:
                     raise Exception(f"{name}:{lineNo} >> function {nextFun} takes {functionData['argc']} arguments, but {loc_argc//2} were given")
+                
                 ## check if all arguments are of the same type
                 regIndex = 0
                 arg_ptr = 0
+                
                 while arg_ptr < loc_argc:
                     argType  = loc_args[arg_ptr]
                     argValue = loc_args[arg_ptr+1]
@@ -527,12 +579,20 @@ class compiler:
                     funcArgType = functionData["args"][arg_ptr-arg_ptr//2]
                     if "|" in funcArgType:
                         funcArgType = funcArgType.split("|")
-                        assert self.typeOf(argValue) in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {' or '.join(funcArgType)}, but {self.typeOf(argValue)} was given"
+                        tOf = self.typeOf(argValue)
+                        if tOf in TOKEN_TYPES:
+                            tOf = self.tokenToType(tOf)
+                        assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {' or '.join(funcArgType)}, but {tOf} was given"
 
                     elif funcArgType not in ["arg", "void"]:
                         if argValue not in self.package["livingFunctions"]:
-                            assert self.typeOf(argValue) == funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {self.typeOf(argValue)} was given"
-                    
+                            tOf = self.typeOf(argValue)
+                            if tOf in TOKEN_TYPES:
+                                tOf = self.tokenToType(tOf)
+                            if "*" in tOf:
+                                tOf = "int"
+                            assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {tOf} was given"
+                            
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         strName = self.allocStr(argValue)
                         self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [{strName}] ; {token_no}")
@@ -555,10 +615,28 @@ class compiler:
                         self.compiledASM[".text"].append(f"mov {REGISTERS[regIndex]}, {argValue} ; {token_no}")
                     arg_ptr  += 2
                     regIndex += 1
+                
                 self.compiledASM[".text"].append(f"call {nextFun} ; {token_no}")
                 
+                rType = functionData["retType"]
+
                 if needReturnValue:
                     self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
+                    if "*" in rType and rType in self.package["structs"]:
+                        ## assign the struct values
+                        rType = rType.replace("*", "")
+                        struct = self.package["structs"][rType]
+                        self.compiledASM[".bss"].append(f"{returnVarName}:")
+                        ext = self.getExtention(returnVarName)
+                        for field in struct["fields"]:
+                            for typ, sname in field.split(" ", 2):
+                                size = 2
+                                if " " in sname:
+                                    sname, size = sname.split(" ")
+                                    
+                                self.compiledASM[".bss"].append(f".{sname} resw {size}")
+                                self.package[ext][f"{returnVarName}.{sname}"] = [typ, "struct_value", True, size]
+                    self.package[ext][returnVarName][0] = 'int' if rType in self.package["structs"] else rType
                     needReturnValue = False
                     returnVarName   = ""
                 break
@@ -571,7 +649,7 @@ class compiler:
                         nextArgs = 3
                         funcCalls = 0
                         mode = 0
-                        if line[token_no+1] is not "BS_FUNCTION_TOKEN":
+                        if line[token_no+1] != "BS_FUNCTION_TOKEN":
                             mode = line[token_no+nextArgs]
                         else:
                             ## get the index of the first int type in line
@@ -676,12 +754,14 @@ class compiler:
                         self.compiledASM[".text"].append(f"cmp rax, rdx\n{mode} {self.logicEndLabel[-1]}")
                         
                         return
+                    
                     case 27: ## goto
                         gotoPoint = line[token_no+2]
                         if self.isVariable(gotoPoint) and "bsDo_" not in gotoPoint:
                             self.compiledASM[".text"].append(f"mov rax, [{gotoPoint}]\njmp rax")
                         else:
                             self.compiledASM[".text"].append(f"jmp .{line[token_no+2]}")
+                    
                     case 28: ## label
                         self.compiledASM[".text"].append(f".{line[token_no+2]}:")
                     

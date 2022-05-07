@@ -1,0 +1,31 @@
+
+const int SYS_IOCTL 16
+const int TIOCGWINSZ 0x5413
+
+struct winsize
+    int ws_row
+    int ws_col
+end
+
+block getWindowColumns -> int
+    sz$4 = 0
+    syscall SYS_IOCTL 1 TIOCGWINSZ sz
+    pop
+    x = sz@0
+    return x
+end
+
+block getWindowRows -> int
+    sz$4 = 0
+    syscall SYS_IOCTL 1 TIOCGWINSZ sz
+    pop
+    x = sz@4
+    return x
+end
+
+block getWindowSize -> *winsize
+    size = winsize
+    size.ws_row = getWindowRows
+    size.ws_col = getWindowColumns
+    return size
+end

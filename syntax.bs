@@ -1,19 +1,22 @@
 #include libs/stdlib.bs
-#include libs/os.bs
-#include libs/list.bs
+##include libs/os.bs
+##include libs/list.bs
 
-block testFunc int -> int
-    a
-    if a == 0
-    | return 1 
-    return 0
+struct testStruct
+    int a
+    int b
+end
+
+block getTestStruct -> *testStruct
+    a = testStruct
+    a.a = 1
+    a.b = 10
+    return a
 end
 
 block main -> int
-    x = 0
-    if testFunc x == 0
-    | println "YAY!"
-    if testFunc x == 1
-    | println "NOO!"
+    s = getTestStruct
+    stdout_in s.a
+    stdout_in s.b
     return 0
 end
