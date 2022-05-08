@@ -2,21 +2,7 @@
 ##include libs/os.bs
 ##include libs/list.bs
 
-struct testStruct
-    int a
-    int b
-end
-
-block getTestStruct -> *testStruct
-    a = testStruct
-    a.a = 1
-    a.b = 10
-    return a
-end
-
 block main -> int
-    s = getTestStruct
-    stdout_in s.a
-    stdout_in s.b
-    return 0
+    h = 69
+    bluescript2_putChar h
 end

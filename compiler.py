@@ -109,7 +109,7 @@ class compiler:
                 return True
         return False
     
-    def allocSpace(self, name:str, dtype:str, size:int=2) -> None:
+    def allocSpace(self, name:str, dtype:str, size:int=4) -> None:
         if name in self.package["globals"]: return
         if name in self.package["arrays"]: return
         if self.isAlloced(name): return
@@ -126,6 +126,9 @@ class compiler:
                 self.package[ext][name] = cpy
                 self.compiledASM[".bss"].append(f"{name} resw {size}")
                 return 
+        elif size != 2:
+            self.compiledASM[".bss"].append(f"{name} resw {size}")
+            return
         if dtype == "int" or dtype == "BS_INT_TOKEN" and name not in self.package["arrays"]:
             self.compiledASM[".bss"].append(f"{name} resw 2 ; stores {2*16}-bit int")
         elif dtype == "short":
@@ -163,6 +166,8 @@ class compiler:
             tpy = self.package[ext][token][0]
             if tpy in ["float", "ptr", "int"]:
                 return "int"
+            elif tpy in TOKEN_TYPES:
+                return self.tokenToType(tpy)
             return tpy
         elif token.isnumeric() or (token[0] == "-" and token[1:].isnumeric()):
             return "int"
@@ -524,7 +529,6 @@ class compiler:
                 loc_argc = len(loc_args)
                 if nextFun not in self.package["livingFunctions"]:
                     raise Exception(f"function {nextFun} not found")
-                if nextFun in self.package["blocks"] : print(nextFun, self.package["blocks"][nextFun]["retType"])
                 
                 if nextFun not in self.package["blocks"]:
                     ## raw call to functions
@@ -644,7 +648,6 @@ class compiler:
             elif isinstance(token, int):
                 match token:
                     case 0: ## if:
-                        if name == "main": print(line)
                         cmp1 = line[token_no+2]
                         nextArgs = 3
                         funcCalls = 0
@@ -756,12 +759,12 @@ class compiler:
                         return
                     
                     case 27: ## goto
-                        gotoPoint = line[token_no+2]
-                        if self.isVariable(gotoPoint) and "bsDo_" not in gotoPoint:
-                            self.compiledASM[".text"].append(f"mov rax, [{gotoPoint}]\njmp rax")
-                        else:
-                            self.compiledASM[".text"].append(f"jmp .{line[token_no+2]}")
-                    
+                        gotoPoint = line[token_no+1]
+                        if gotoPoint in TOKEN_TYPES:
+                            gotoPoint = f"[{line[token_no+2].replace('*', '')}]"
+                        elif gotoPoint.isalpha() or "bsDo_" in gotoPoint:
+                            gotoPoint = f".{name}_{gotoPoint}"
+                        self.compiledASM[".text"].append(f"jmp {gotoPoint}")
                     case 28: ## label
                         self.compiledASM[".text"].append(f".{line[token_no+2]}:")
                     

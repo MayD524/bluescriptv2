@@ -246,3 +246,12 @@ bluescript2_numeric_print:
         cmp rcx, digitSpace
         jge ._printLoop2
     ret
+bluescript2_putChar:
+    ; char in rax
+    ; file descriptor in rdi
+    mov [dummy], rax
+    mov rax, 1
+    mov rsi, dummy
+    mov rdx, 1
+    syscall
+    ret

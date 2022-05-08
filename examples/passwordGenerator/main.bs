@@ -1,0 +1,44 @@
+#include libs/stdlib.bs
+
+const int MIN_CHAR '!'
+const int MAX_CHAR '~'
+
+const int MIN_LEN 8
+const int MAX_LEN 64
+
+block pickRandomChar -> char
+    retChar = randint MIN_CHAR MAX_CHAR
+    return retChar
+end
+
+block main -> int
+    uSize = 0
+    label lengthTryAgain
+    uSize = iprompt "Enter a length of 8 to 64: "
+    if uSize < MIN_LEN
+    | setColor 1 1
+    | print "Password must be at least 8 characters long.\n"
+    | termReset
+    | goto lengthTryAgain
+
+    if uSize > MAX_LEN
+    | setColor 1 1
+    | print "Password must be less than 64 characters long.\n"
+    | termReset
+    | goto lengthTryAgain
+
+    last = 0
+    i = 0
+    print "Your password is: "
+    do
+        label doAgain
+        chr = pickRandomChar
+        if chr == last
+        | goto doAgain
+        putc chr
+        last = chr
+        i + 1
+    while i < uSize
+    print "\n"
+    return 0
+end

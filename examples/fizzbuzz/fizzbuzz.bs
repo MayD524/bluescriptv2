@@ -16,7 +16,7 @@ block fizzbuzz int
     if m3 == 0
     | println "Fizz"
     | return
-    stdout_i cur
+    stdout_in cur
 end
 
 block main -> int 

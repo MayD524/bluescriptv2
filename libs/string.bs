@@ -2,10 +2,8 @@
 
 block strlen str -> int
     lnstr
-    stderr "strlen: not implemented\n" 1
-    return 1
-    #ln = bs_string_strlen lnstr
-    #return ln
+    ln = bs_string_strlen lnstr
+    return ln
 end
 
 block itos int -> str

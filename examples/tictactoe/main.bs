@@ -1,5 +1,5 @@
 #include libs/stdlib.bs
-#include tictactoe/drawCell.bs
+#include examples/tictactoe/drawCell.bs
 
 #*
 # * There is a bug with starting with 7 or 8 

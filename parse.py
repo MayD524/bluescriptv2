@@ -430,6 +430,9 @@ class parser:
                     if not inStr:
                         if token in BS_KEY_TOKENS:
                             tokens[token_no] = BS_KEY_TOKENS[token]
+                            ## is a goto
+                            if token == "goto":
+                                skip = True if "*" not in tokens[token_no+1] else False 
                         elif token in self.livingFunctions:
                             tokens.insert(token_no, "BS_FUNCTION_TOKEN")
                             self.calledFuncs.append(token)

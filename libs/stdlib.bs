@@ -27,7 +27,6 @@ end
 
 block randint int int -> int
     min max
-    max + 1 ## make inclusive
     num = bs_random max
     if num < min
     | num + min
@@ -92,7 +91,7 @@ block setCursorPos int int
     stdout "H"
 end
 
-block wholeSleep int int
+block nanosleep int int
     secs nanos
     bs_sleepy secs nanos
 end
@@ -100,6 +99,11 @@ end
 block sleep int
     secs
     bs_sleepy secs 0
+end
+
+block putc char
+    ch
+    bluescript2_putChar ch STDOUT
 end
 
 block stderr str int -> void
@@ -160,7 +164,7 @@ end
 ## a sized prompt call (for input)
 block sprompt str int -> str
     prmpt msgSize
-    stdout prmpt
+    print prmpt
 
     theString = bluescript2_string_input msgSize
     return theString

@@ -1,0 +1,46 @@
+
+const int SYS_read 0
+const int SYS_write 1
+const int SYS_open 2
+const int SYS_close 3
+const int SYS_exit 60
+
+# file flags
+const int O_RDONLY 0
+const int O_WRONLY 1
+const int O_RDWR 2
+const int O_CREAT 64
+const int O_APPEND 1024
+const int O_DIRECTORY 65536
+
+block open str int -> int
+    pth mode
+    syscall SYS_open pth mode 0x1B6 
+    pop retVal
+    return retVal
+end
+
+block makeFile str
+    pth
+    syscall SYS_open pth O_CREAT 0x1B6
+    pop retVal
+    close retVal
+
+end
+
+block close int 
+    fd
+    syscall SYS_close fd
+end
+
+block write int str
+    fd data
+    len = strlen data
+    syscall SYS_write fd data len
+    pop
+end
+
+block read int -> str
+    fd
+    
+end
