@@ -12,7 +12,18 @@ BS_MATH_OPERS = [
     "+",
     "-",
     "*",
-    "/"
+    "/",
+    '='
+]
+
+GENERAL_OPERATORS = [
+    "==",
+    "!=",
+    ">",
+    "<",
+    ">=",
+    "<=",
+    "->",
 ]
 
 BS_TOKEN_TYPES = [
@@ -170,19 +181,37 @@ class parser:
             
             lineNo += 1
 
+    def parseMath(self, line:str) -> list[str]:
+        op_out  = []
+        num_out = []
+        buff    = []
+        for c in line:
+            if c in BS_MATH_OPERS:
+                num_out.append(''.join(buff))
+                buff = []
+                op_out.append(c)
+            else:
+                buff.append(c)
+        num_out.append(''.join(buff))
+        return num_out, op_out
+
     def pre_parse(self) -> None:
         self.handleIncludes()
         inMultiLineComment = False
         
         ## remove single line comments
-        ## TODO: check if string contains # or #**#
         line_no = 0
         
         whileCheck   = False
         whileBlkName = []
         
+        ## remove comments and empty lines
+        self.combined_data = [line.split("#",1)[0].strip() for line in self.combined_data]
+        self.combined_data = [line for line in self.combined_data if line != "" and line != "\n"]
+
         while line_no < len(self.combined_data):
             line = self.combined_data[line_no].strip()
+            ## Handle comments & multi-line comments
             if BS_COMMENT_START in line:
                 self.combined_data[line_no] = line.split(BS_COMMENT_START, 1)[0]
                 inMultiLineComment = True
@@ -194,6 +223,7 @@ class parser:
                     continue
                 self.combined_data[line_no] = ""
                 
+            ## split lines (allows for single line operations)
             elif ";" in line:
                 ## break the line into lines
                 ## check if the ';' is in a string
@@ -218,7 +248,6 @@ class parser:
                 whileBlkName.append(f"bsDo_{line_no}")
                 self.combined_data[line_no] = line
             
-
             elif line.startswith("while"):
                 assert whileCheck, "While without do"
                 
@@ -244,11 +273,30 @@ class parser:
                 gotoCMD = "| " + gotoCMD if "|" in line else gotoCMD
                 self.combined_data[line_no] = gotoCMD
 
+            ## split line by operators (+,-,*,/,=,==,!=,>,<,>=,<=)
+            elif any(op in line for op in BS_MATH_OPERS) and not any(op in line for op in GENERAL_OPERATORS):
+                nums, ops = self.parseMath(line)
+                current = line_no
+                setTo = ''
+                for i in range(0, len(nums)):
+                    if i == len(ops):
+                        break
+                    a, b = nums[i], nums[i+1]
+                    a, b = a.strip(), b.strip()
+                    if ops[i] == "=":
+                        setTo = a
+                    if a.isnumeric():
+                        a = setTo if setTo != '' else a
+
+                    if current == line_no:
+                        self.combined_data[current] = f"{a} {ops[i]} {b}".strip()
+                    else:
+                        self.combined_data.insert(current, f"{a} {ops[i]} {b}".strip())
+                    current += 1
+                line_no = current - 1
+                
             line_no += 1
         
-        self.combined_data = [line.split("#",1)[0].strip() for line in self.combined_data]
-        ## remove empty lines
-        self.combined_data = [line for line in self.combined_data if line != "" and line != "\n"]
         if DEBUG:
             print("\n\n-- COMBINED DATA --")
             pprint(self.combined_data)

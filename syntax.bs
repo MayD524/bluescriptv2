@@ -1,8 +1,5 @@
 #include libs/stdlib.bs
-##include libs/os.bs
-##include libs/list.bs
 
 block main -> int
-    h = 69
-    bluescript2_putChar h
+    println "\u🤷"
 end

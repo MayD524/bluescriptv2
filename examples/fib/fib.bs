@@ -1,0 +1,36 @@
+#include libs/stdlib.bs
+
+block fib int -> int
+    n
+    a = 0
+    b = 1
+
+    if n < 0
+    | raise "fib: negative argument"
+
+    if n == 0
+    | return 0
+
+    if n <= 2
+    | return 1
+
+    i = 1
+    do
+        c = a
+        c + b
+        a = b
+        b = c
+        i + 1
+    while i < n
+    return b
+end
+
+block main -> int 
+    i = 0
+    do
+        x = fib i
+        stdout_in x
+        i + 1
+    while i < 10
+    return 0
+end
