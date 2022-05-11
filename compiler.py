@@ -252,17 +252,16 @@ class compiler:
             self.compiledASM[".data"].append(f"{bs_str}, 0")
         return f"bs_str{self.global_token_id}"
 
-    def checkVariableOperations(self, varName:str, value:str) -> None:
-        ext = self.getExtention(varName)
+    def typeCheck(self, token:str, expectedType:str) -> bool:
+        if "&" in token:
+            return True ## allows for use of variables in places where they are not expected
+        ext = self.getExtention(token)
+        assert ext, f"{self.currentFunName}:{self.currentLineNo} >> {token} is not a valid token"
         
-        if not ext:
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} not found")
-        elif ext == "constants":
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} is constant")
-        elif self.typeOf(varName) != "int":
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} is not an integer, but a {self.typeOf(varName)}")
-        elif self.typeOf(value) != "int":
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable '{value}' is not an integer, but a {self.typeOf(value)}")
+        return self.package[ext][token][0] == expectedType
+
+    def checkVariableOperations(self, varName:str, value:str) -> None:
+        return self.typeOf(varName) == self.typeOf(value)
     
     def compile_blockLine(self, name:str, line:list[str], lineNo:int=0) -> bool:
         expectedIndent = len(self.logicEndLabel) - 1 if len(self.logicEndLabel) > 0 else 0
@@ -293,6 +292,7 @@ class compiler:
         needReturnValue = False ## for declaring variables that require a return value
         returnVarName   = ""
         token_no        = 0
+        
         while token_no < len(line):
             token = line[token_no]
             
@@ -596,11 +596,12 @@ class compiler:
                                 tOf = self.tokenToType(tOf)
                             if "&" in tOf:
                                 tOf = "int"
-                            assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {tOf} was given"
+                            assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {tOf} was given, {argValue}"
                             
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         strName = self.allocStr(argValue)
                         self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [{strName}] ; {token_no}")
+                    
                     elif argType == "BS_VARIABLE_TOKEN": 
                         size = -1
                         if '[' in argValue:
@@ -626,9 +627,14 @@ class compiler:
                 rType = functionData["retType"]
 
                 if needReturnValue:
+<<<<<<< HEAD
 
                     if "&" in rType and rType in self.package["structs"]:
                         regIndex = 0
+=======
+                    self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
+                    if "&" in rType and rType in self.package["structs"]:
+>>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
                         ## assign the struct values
                         rType = rType.replace("&", "")
                         struct = self.package["structs"][rType]

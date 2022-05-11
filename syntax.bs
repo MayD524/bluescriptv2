@@ -6,6 +6,7 @@ struct test_struct
 end
 
 block main -> int
+<<<<<<< HEAD
     a = test_block
     stdout_in a.a
     stdout_in a.b
@@ -17,3 +18,12 @@ block test_block -> &test_struct
     a.b = 20
     return a
 end
+=======
+    testNamespace.test 
+end
+
+namespace testNamespace
+block test 
+    println "test"
+end
+>>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83

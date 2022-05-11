@@ -11,6 +11,7 @@ syscall
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
+<<<<<<< HEAD
 mov rax, 10
 mov [main_h], rax
 mov rax, [main_h]
@@ -23,6 +24,14 @@ mov [main_h], rax
 mov rax, [main_h]
 call stdout_in
 mov rax, 0
+=======
+call testNamespace.test
+mov rax, 0
+ret
+testNamespace.test:
+lea rax, [bs_str0]
+call println
+>>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
 ret
 setCursorPos:
 mov [setCursorPos_x], rax
@@ -122,6 +131,11 @@ mov [exit_eno], rax
 mov rax, [exit_eno]
 call bs_exit
 ret
+pwarn:
+mov [pwarn_err], rax
+mov rax, [pwarn_err]
+call print
+ret
 section .rodata
 STDOUT dq 1
 section .bss
@@ -147,11 +161,22 @@ print_msg resw 4
 stdout_i_msg resw 4
 stdout_in_i resw 4
 exit_eno resw 4
+pwarn_err resw 4
 section .data
+<<<<<<< HEAD
 bs_str3: db 27,91, 0
 bs_str4: db 59, 0
 bs_str5: db 72, 0
 bs_str20: db 10, 0
 bs_str21: db 34,27,49,98,27,91,50,74,34, 0
+=======
+bs_str0: db 116,101,115,116, 0
+bs_str1: db 27,91, 0
+bs_str2: db 59, 0
+bs_str3: db 72, 0
+bs_str18: db 10, 0
+bs_str19: db 34,27,49,98,27,91,50,74,34, 0
+bs_str20: db 34,112,111,115,105,120,34, 0
+>>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
 stdinBuffSize dq 1024
 warno dq 0
