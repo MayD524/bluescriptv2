@@ -11,22 +11,31 @@ syscall
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
-lea rax, [bs_str0]
-call println
+mov rax, 10
+mov [main_h], rax
+mov rax, [main_h]
+add rax, 1
+mov [main_h], rax
+mov rax, [main_h]
+mov rbx, 2
+mul rbx
+mov [main_h], rax
+mov rax, [main_h]
+call stdout_in
 mov rax, 0
 ret
 setCursorPos:
 mov [setCursorPos_x], rax
 mov [setCursorPos_y], rdi
-lea rax, [bs_str1]
+lea rax, [bs_str3]
 call stdout
 mov rax, [setCursorPos_y]
 call stdout_i
-lea rax, [bs_str2]
+lea rax, [bs_str4]
 call stdout
 mov rax, [setCursorPos_x]
 call stdout_i
-lea rax, [bs_str3]
+lea rax, [bs_str5]
 call stdout
 ret
 stderr:
@@ -38,20 +47,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end3
+je .bs_logic_end5
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end3:
+.bs_logic_end5:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end5
+jle .bs_logic_end7
 mov rax, 1
 call exit
-.bs_logic_end5:
+.bs_logic_end7:
 ret
 ret
 raise:
@@ -101,11 +110,11 @@ mov [stdout_i_msg], rax
 mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
 ret
-println:
-mov [println_msg], rax
-mov rax, [println_msg]
-call stdout
-lea rax, [bs_str18]
+stdout_in:
+mov [stdout_in_i], rax
+mov rax, [stdout_in_i]
+call stdout_i
+lea rax, [bs_str20]
 call stdout
 ret
 exit:
@@ -120,6 +129,7 @@ digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
+main_h resw 4
 setCursorPos_x resw 4
 setCursorPos_y resw 4
 stderr_msg resw 4
@@ -135,14 +145,13 @@ prompt_prmpt resw 4
 prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
-println_msg resw 4
+stdout_in_i resw 4
 exit_eno resw 4
 section .data
-bs_str0: db 240,376,164,183, 0
-bs_str1: db 27,91, 0
-bs_str2: db 59, 0
-bs_str3: db 72, 0
-bs_str18: db 10, 0
-bs_str19: db 34,27,49,98,27,91,50,74,34, 0
+bs_str3: db 27,91, 0
+bs_str4: db 59, 0
+bs_str5: db 72, 0
+bs_str20: db 10, 0
+bs_str21: db 34,27,49,98,27,91,50,74,34, 0
 stdinBuffSize dq 1024
 warno dq 0

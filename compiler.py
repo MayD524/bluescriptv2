@@ -419,6 +419,7 @@ class compiler:
                                     self.package[ext][varName][3] = size
                                     token_no += incToken
                                     continue
+                            
                             else:
                                 if size != -1:
                                     if f"{name}_{size}" in self.package["variables"]:
@@ -593,7 +594,7 @@ class compiler:
                             tOf = self.typeOf(argValue)
                             if tOf in TOKEN_TYPES:
                                 tOf = self.tokenToType(tOf)
-                            if "*" in tOf:
+                            if "&" in tOf:
                                 tOf = "int"
                             assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {tOf} was given"
                             
@@ -625,10 +626,11 @@ class compiler:
                 rType = functionData["retType"]
 
                 if needReturnValue:
-                    self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
-                    if "*" in rType and rType in self.package["structs"]:
+
+                    if "&" in rType and rType in self.package["structs"]:
+                        regIndex = 0
                         ## assign the struct values
-                        rType = rType.replace("*", "")
+                        rType = rType.replace("&", "")
                         struct = self.package["structs"][rType]
                         self.compiledASM[".bss"].append(f"{returnVarName}:")
                         ext = self.getExtention(returnVarName)
@@ -639,7 +641,9 @@ class compiler:
                                     sname, size = sname.split(" ")
                                     
                                 self.compiledASM[".bss"].append(f".{sname} resw {size}")
+                                self.compiledASM[".text"].append(f"mov [{returnVarName}.{sname}], {REGISTERS[regIndex]}")
                                 self.package[ext][f"{returnVarName}.{sname}"] = [typ, "struct_value", True, size]
+                            regIndex += 1
                     self.package[ext][returnVarName][0] = 'int' if rType in self.package["structs"] else rType
                     needReturnValue = False
                     returnVarName   = ""
@@ -717,9 +721,11 @@ class compiler:
                             
                         if self.isVariable(cmp2):
                             cmp2 = f"[{cmp2}]"
+                            
                         elif self.typeOf(cmp2) == "str":
                             strName = self.allocStr(cmp2)
                             cmp2 = f"[{strName}]"
+
                         elif line[token_no+nextArgs+1] == "BS_FUNCTION_TOKEN":
                             ## func call
                             for x in range(len(line)):
@@ -761,7 +767,7 @@ class compiler:
                     case 27: ## goto
                         gotoPoint = line[token_no+1]
                         if gotoPoint in TOKEN_TYPES:
-                            gotoPoint = f"[{line[token_no+2].replace('*', '')}]"
+                            gotoPoint = f"[{line[token_no+2].replace('&', '')}]"
                         elif gotoPoint.isalpha() or "bsDo_" in gotoPoint:
                             gotoPoint = f".{name}_{gotoPoint}"
                         self.compiledASM[".text"].append(f"jmp {gotoPoint}")

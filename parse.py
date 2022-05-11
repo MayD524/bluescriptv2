@@ -11,7 +11,7 @@ BS_GENERIC_TYPES = [
 BS_MATH_OPERS = [
     "+",
     "-",
-    "*",
+    "&",
     "/",
     '='
 ]
@@ -47,7 +47,7 @@ BS_KEY_TOKENS = {
     "+="     : 10,
     "/="     : 11,
     
-    "*"     : 8,
+    "&"     : 8,
     "-"     : 9,
     "+"     : 10,
     "/"     : 11,
@@ -276,22 +276,24 @@ class parser:
             ## split line by operators (+,-,*,/,=,==,!=,>,<,>=,<=)
             elif any(op in line for op in BS_MATH_OPERS) and not any(op in line for op in GENERAL_OPERATORS):
                 nums, ops = self.parseMath(line)
+                nums = [num.strip() for num in nums]
+                ops = [op.strip() for op in ops]
                 current = line_no
-                setTo = ''
+                setTo = "| " + nums[0] if "|" in line else nums[0]
+                if len(ops) == 1:
+                    self.combined_data[current] = f"{setTo} {ops[0]} {nums[1]}"
+                    line_no += 1
+                    continue
+
                 for i in range(0, len(nums)):
-                    if i == len(ops):
+                    if i >= len(ops):
                         break
-                    a, b = nums[i], nums[i+1]
-                    a, b = a.strip(), b.strip()
-                    if ops[i] == "=":
-                        setTo = a
-                    if a.isnumeric():
-                        a = setTo if setTo != '' else a
+                    b = nums[i+1]
 
                     if current == line_no:
-                        self.combined_data[current] = f"{a} {ops[i]} {b}".strip()
+                        self.combined_data[current] = f"{setTo} {ops[i]} {b}"
                     else:
-                        self.combined_data.insert(current, f"{a} {ops[i]} {b}".strip())
+                        self.combined_data.insert(current, f"{setTo} {ops[i]} {b}")
                     current += 1
                 line_no = current - 1
                 
@@ -347,10 +349,10 @@ class parser:
                         args.pop(i)
                     elif "|" in args[i]:
                         args[i] = "|".join([self.setType(x) for x in args[i].split("|")])
-                    elif "*" not in args[i]:
+                    elif "&" not in args[i]:
                         args[i] = self.setType(args[i])
                     else:
-                        args[i] = args[i].replace("*", "")
+                        args[i] = args[i].replace("&", "")
                     
                 if len(args) == 0:
                     args.append("void")
@@ -373,6 +375,7 @@ class parser:
                 self.globalVariables[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue
+
             #assert blockName not in self.blocks, f"Block {blockName} already exists! {lineNo}"
             next_end = self.combined_data[lineNo:].index("end" if not useSquiggly else "}")
             retType = self.setType(retType.strip()) 
@@ -480,7 +483,7 @@ class parser:
                             tokens[token_no] = BS_KEY_TOKENS[token]
                             ## is a goto
                             if token == "goto":
-                                skip = True if "*" not in tokens[token_no+1] else False 
+                                skip = True if "&" not in tokens[token_no+1] else False 
                         elif token in self.livingFunctions:
                             tokens.insert(token_no, "BS_FUNCTION_TOKEN")
                             self.calledFuncs.append(token)
@@ -488,9 +491,9 @@ class parser:
                         elif token.isnumeric() or token.startswith("0x") or token.startswith("0b") or token.startswith("0o") or (token.startswith('-') and token[1:].isnumeric()):
                             tokens.insert(token_no, "BS_INT_TOKEN")
                             skip = True
-                        elif "*" in token and token.replace("*", "") in self.livingFunctions:
+                        elif "&" in token and token.replace("&", "") in self.livingFunctions:
                             tokens.insert(token_no, "BS_INT_TOKEN")
-                            token = token.replace("*", "")
+                            token = token.replace("&", "")
                             tokens[token_no+1] = token
                             self.calledFuncs.append(token)
                             skip = True

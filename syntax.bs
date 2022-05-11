@@ -1,5 +1,19 @@
 #include libs/stdlib.bs
 
+struct test_struct 
+    int a
+    int b
+end
+
 block main -> int
-    println "\u🤷"
+    a = test_block
+    stdout_in a.a
+    stdout_in a.b
+end
+
+block test_block -> &test_struct
+    a = test_struct
+    a.a = 10
+    a.b = 20
+    return a
 end
