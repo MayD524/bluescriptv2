@@ -1,5 +1,10 @@
 #include libs/stdlib.bs
 
 block main -> int
-    println "\u🤷"
+    testNamespace.test 
+end
+
+namespace testNamespace
+block test 
+    println "test"
 end

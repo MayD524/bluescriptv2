@@ -1,8 +1,4 @@
-#*
-    This is a standard library for BlueScript 2.0
-    this library is designed to be used for posix
-    based commands
-*#
+
 #use libs/asm/posix.asm
 #use libs/asm/bs_fstream.asm
 #include libs/string.bs

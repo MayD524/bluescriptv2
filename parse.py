@@ -11,7 +11,7 @@ BS_GENERIC_TYPES = [
 BS_MATH_OPERS = [
     "+",
     "-",
-    "*",
+    "&",
     "/",
     '='
 ]
@@ -24,6 +24,13 @@ GENERAL_OPERATORS = [
     ">=",
     "<=",
     "->",
+]
+
+BS_NAMESPACEABLE_TOKENS = [
+    "block",
+    "struct",
+    "const",
+    "array",
 ]
 
 BS_TOKEN_TYPES = [
@@ -47,7 +54,7 @@ BS_KEY_TOKENS = {
     "+="     : 10,
     "/="     : 11,
     
-    "*"     : 8,
+    "&"     : 8,
     "-"     : 9,
     "+"     : 10,
     "/"     : 11,
@@ -70,6 +77,9 @@ BS_KEY_TOKENS = {
     "syscall": 31,
     "pop"   : 32,
     "push"  : 33,
+    
+    
+    "namespace" : -1,
 }
 
 BS_COMMENT_CHAR = "#"
@@ -94,6 +104,9 @@ class parser:
                 size
             }
         """
+        
+        self.currentNameSpace = ""
+        
         ## list of structs
         self.structs        : dict[str, dict[str]] = {}
         
@@ -120,6 +133,7 @@ class parser:
                 ## get the file data
                 fileData = open(fileName, "r").readlines()
                 ## add the file data to the combined data
+                self.combined_data.append("namespace")
                 self.combined_data.extend(fileData)
                 ## remove the line that included the file
                 self.combined_data.pop(line_no)
@@ -150,6 +164,8 @@ class parser:
                 line = line.split(" ", 1)[1].strip()
                 self.externs.append(line)
                 self.livingFunctions.append(line)
+                
+            ## TODOOO: exports
 
     def structFind(self) -> None:
         
@@ -160,14 +176,16 @@ class parser:
         
         while lineNo < len(self.combined_data):
             line = self.combined_data[lineNo]
+            if not line.startswith("struct"):
+                lineNo += 1
+                continue
             if line.startswith("struct"):
                 assert structName is None, f"{lineNo} >> struct is already being defined!"
                 assert structName not in self.structs, f"{lineNo} >> struct is already defined!"
                 structStart = lineNo
                 structName = line.split(" ", 1)[1]
-                
+            
             elif structName != None and line == "end":
-                print(f"{lineNo} >> struct {structName} {structData}")
                 self.structs[structName] = structData.copy()
                 structName = None
                 structData.clear()
@@ -217,6 +235,7 @@ class parser:
                 inMultiLineComment = True
                 
             elif inMultiLineComment:
+                print("here")
                 if BS_COMMENT_END in line:
                     inMultiLineComment = False
                     self.combined_data[line_no] = line.split(BS_COMMENT_END, 1)[0].strip()
@@ -294,7 +313,17 @@ class parser:
                         self.combined_data.insert(current, f"{a} {ops[i]} {b}".strip())
                     current += 1
                 line_no = current - 1
+            
+            elif "namespace" in line:
+                self.currentNameSpace = line.split("namespace", 1)[1].strip()
+                self.combined_data[line_no] = ""
                 
+            ## handle namespacing
+            elif any (tp in line for tp in BS_NAMESPACEABLE_TOKENS) and self.currentNameSpace != '':
+                tokenName, linedata = line.split(" ", 1)
+                linedata = self.currentNameSpace + "." + linedata
+                self.combined_data[line_no] = f"{tokenName} {linedata}"
+
             line_no += 1
         
         if DEBUG:
@@ -325,6 +354,9 @@ class parser:
         while lineNo < len(self.combined_data):         
             line = self.combined_data[lineNo]
             useSquiggly = False
+            if line == "":
+                lineNo += 1
+                continue
             if line.startswith("block"):
                 if "{" in line:
                     line = line.replace("{", "")
@@ -347,10 +379,10 @@ class parser:
                         args.pop(i)
                     elif "|" in args[i]:
                         args[i] = "|".join([self.setType(x) for x in args[i].split("|")])
-                    elif "*" not in args[i]:
+                    elif "&" not in args[i]:
                         args[i] = self.setType(args[i])
                     else:
-                        args[i] = args[i].replace("*", "")
+                        args[i] = args[i].replace("&", "")
                     
                 if len(args) == 0:
                     args.append("void")
@@ -373,6 +405,7 @@ class parser:
                 self.globalVariables[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue
+            
             #assert blockName not in self.blocks, f"Block {blockName} already exists! {lineNo}"
             next_end = self.combined_data[lineNo:].index("end" if not useSquiggly else "}")
             retType = self.setType(retType.strip()) 
@@ -476,11 +509,13 @@ class parser:
                         tokens[token_no] = token
                     
                     if not inStr:
+                        
                         if token in BS_KEY_TOKENS:
                             tokens[token_no] = BS_KEY_TOKENS[token]
+                            
                             ## is a goto
                             if token == "goto":
-                                skip = True if "*" not in tokens[token_no+1] else False 
+                                skip = True if "&" not in tokens[token_no+1] else False 
                         elif token in self.livingFunctions:
                             tokens.insert(token_no, "BS_FUNCTION_TOKEN")
                             self.calledFuncs.append(token)
@@ -488,9 +523,9 @@ class parser:
                         elif token.isnumeric() or token.startswith("0x") or token.startswith("0b") or token.startswith("0o") or (token.startswith('-') and token[1:].isnumeric()):
                             tokens.insert(token_no, "BS_INT_TOKEN")
                             skip = True
-                        elif "*" in token and token.replace("*", "") in self.livingFunctions:
+                        elif "&" in token and token.replace("&", "") in self.livingFunctions:
                             tokens.insert(token_no, "BS_INT_TOKEN")
-                            token = token.replace("*", "")
+                            token = token.replace("&", "")
                             tokens[token_no+1] = token
                             self.calledFuncs.append(token)
                             skip = True
@@ -498,7 +533,6 @@ class parser:
                             tokens.insert(token_no, "BS_STRUCT_TOKEN")
                             skip = True
                         else:
-                            #print(f"{block}:{token_no} - {token}")
                             tokens.insert(token_no, "BS_VARIABLE_TOKEN")
                             if token not in self.constantValues and token.split('[')[0] not in self.arrays and token not in self.globalVariables:
                                 ## scope 

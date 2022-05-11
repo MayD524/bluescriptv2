@@ -11,9 +11,12 @@ syscall
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
+call testNamespace.test
+mov rax, 0
+ret
+testNamespace.test:
 lea rax, [bs_str0]
 call println
-mov rax, 0
 ret
 setCursorPos:
 mov [setCursorPos_x], rax
@@ -113,6 +116,11 @@ mov [exit_eno], rax
 mov rax, [exit_eno]
 call bs_exit
 ret
+pwarn:
+mov [pwarn_err], rax
+mov rax, [pwarn_err]
+call print
+ret
 section .rodata
 STDOUT dq 1
 section .bss
@@ -137,12 +145,14 @@ print_msg resw 4
 stdout_i_msg resw 4
 println_msg resw 4
 exit_eno resw 4
+pwarn_err resw 4
 section .data
-bs_str0: db 240,376,164,183, 0
+bs_str0: db 116,101,115,116, 0
 bs_str1: db 27,91, 0
 bs_str2: db 59, 0
 bs_str3: db 72, 0
 bs_str18: db 10, 0
 bs_str19: db 34,27,49,98,27,91,50,74,34, 0
+bs_str20: db 34,112,111,115,105,120,34, 0
 stdinBuffSize dq 1024
 warno dq 0

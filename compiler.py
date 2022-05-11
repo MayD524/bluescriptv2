@@ -252,17 +252,16 @@ class compiler:
             self.compiledASM[".data"].append(f"{bs_str}, 0")
         return f"bs_str{self.global_token_id}"
 
-    def checkVariableOperations(self, varName:str, value:str) -> None:
-        ext = self.getExtention(varName)
+    def typeCheck(self, token:str, expectedType:str) -> bool:
+        if "&" in token:
+            return True ## allows for use of variables in places where they are not expected
+        ext = self.getExtention(token)
+        assert ext, f"{self.currentFunName}:{self.currentLineNo} >> {token} is not a valid token"
         
-        if not ext:
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} not found")
-        elif ext == "constants":
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} is constant")
-        elif self.typeOf(varName) != "int":
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable {varName} is not an integer, but a {self.typeOf(varName)}")
-        elif self.typeOf(value) != "int":
-            raise Exception(f"{self.currentFunName}:{self.currentLineNo+1} variable '{value}' is not an integer, but a {self.typeOf(value)}")
+        return self.package[ext][token][0] == expectedType
+
+    def checkVariableOperations(self, varName:str, value:str) -> None:
+        return self.typeOf(varName) == self.typeOf(value)
     
     def compile_blockLine(self, name:str, line:list[str], lineNo:int=0) -> bool:
         expectedIndent = len(self.logicEndLabel) - 1 if len(self.logicEndLabel) > 0 else 0
@@ -293,6 +292,7 @@ class compiler:
         needReturnValue = False ## for declaring variables that require a return value
         returnVarName   = ""
         token_no        = 0
+        
         while token_no < len(line):
             token = line[token_no]
             
@@ -593,13 +593,14 @@ class compiler:
                             tOf = self.typeOf(argValue)
                             if tOf in TOKEN_TYPES:
                                 tOf = self.tokenToType(tOf)
-                            if "*" in tOf:
+                            if "&" in tOf:
                                 tOf = "int"
-                            assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {tOf} was given"
+                            assert tOf in funcArgType, f"{name}:{lineNo} >> argument {arg_ptr//2} of function {nextFun} is of type {funcArgType}, but {tOf} was given, {argValue}"
                             
                     if argType   == "BS_STRING_TOKEN_AHOY":
                         strName = self.allocStr(argValue)
                         self.compiledASM[".text"].append(f"lea {REGISTERS[regIndex]}, [{strName}] ; {token_no}")
+                    
                     elif argType == "BS_VARIABLE_TOKEN": 
                         size = -1
                         if '[' in argValue:
@@ -626,9 +627,9 @@ class compiler:
 
                 if needReturnValue:
                     self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
-                    if "*" in rType and rType in self.package["structs"]:
+                    if "&" in rType and rType in self.package["structs"]:
                         ## assign the struct values
-                        rType = rType.replace("*", "")
+                        rType = rType.replace("&", "")
                         struct = self.package["structs"][rType]
                         self.compiledASM[".bss"].append(f"{returnVarName}:")
                         ext = self.getExtention(returnVarName)
@@ -761,7 +762,7 @@ class compiler:
                     case 27: ## goto
                         gotoPoint = line[token_no+1]
                         if gotoPoint in TOKEN_TYPES:
-                            gotoPoint = f"[{line[token_no+2].replace('*', '')}]"
+                            gotoPoint = f"[{line[token_no+2].replace('&', '')}]"
                         elif gotoPoint.isalpha() or "bsDo_" in gotoPoint:
                             gotoPoint = f".{name}_{gotoPoint}"
                         self.compiledASM[".text"].append(f"jmp {gotoPoint}")
