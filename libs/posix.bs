@@ -8,6 +8,8 @@ const str os_name "posix"
 const int SUCCESS_EXIT 0
 const int FAILED_EXIT 1
 
+const int SYS_EXECVE 59
+
 block pwarn str -> void
     err
     print err
@@ -22,4 +24,10 @@ end
 block exit int -> void
     exitCode
     bs_asmExit exitCode
+end
+
+block exec str str
+    cmd argv
+    syscall SYS_EXECVE cmd argv 0
+    pop
 end

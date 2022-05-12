@@ -11,41 +11,41 @@ syscall
 main:
 mov [main_argc], rdi
 mov [main_argv], rsi
-<<<<<<< HEAD
-mov rax, 10
-mov [main_h], rax
-mov rax, [main_h]
-add rax, 1
-mov [main_h], rax
-mov rax, [main_h]
-mov rbx, 2
-mul rbx
-mov [main_h], rax
-mov rax, [main_h]
-call stdout_in
-mov rax, 0
-=======
-call testNamespace.test
-mov rax, 0
-ret
-testNamespace.test:
+push rax
 lea rax, [bs_str0]
+mov [main_cmd], rax
+pop rax
+push rax
+lea rax, [bs_str1]
+mov [main_args], rax
+pop rax
+mov rax, [main_cmd]
+call print
+mov rax, 32
+call putc
+mov rax, [main_args]
 call println
->>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
+mov rax, 0
 ret
 setCursorPos:
 mov [setCursorPos_x], rax
 mov [setCursorPos_y], rdi
-lea rax, [bs_str3]
+lea rax, [bs_str2]
 call stdout
 mov rax, [setCursorPos_y]
 call stdout_i
-lea rax, [bs_str4]
+lea rax, [bs_str3]
 call stdout
 mov rax, [setCursorPos_x]
 call stdout_i
-lea rax, [bs_str5]
+lea rax, [bs_str4]
 call stdout
+ret
+putc:
+mov [putc_ch], rax
+mov rax, [putc_ch]
+mov rdi, [STDOUT]
+call bluescript2_putChar
 ret
 stderr:
 mov [stderr_msg], rax
@@ -56,20 +56,20 @@ call bluescript2_unix_print
 mov rax, [stderr_eno]
 mov rdx, 0
 cmp rax, rdx
-je .bs_logic_end5
+je .bs_logic_end4
 mov rax, [stderr_eno]
 call exit
-.bs_logic_end5:
+.bs_logic_end4:
 mov rax, [warno]
 add rax, 1
 mov [warno], rax
 mov rax, [warno]
 mov rdx, 2
 cmp rax, rdx
-jle .bs_logic_end7
+jle .bs_logic_end6
 mov rax, 1
 call exit
-.bs_logic_end7:
+.bs_logic_end6:
 ret
 ret
 raise:
@@ -119,11 +119,11 @@ mov [stdout_i_msg], rax
 mov rax, [stdout_i_msg]
 call bluescript2_numeric_print
 ret
-stdout_in:
-mov [stdout_in_i], rax
-mov rax, [stdout_in_i]
-call stdout_i
-lea rax, [bs_str20]
+println:
+mov [println_msg], rax
+mov rax, [println_msg]
+call stdout
+lea rax, [bs_str19]
 call stdout
 ret
 exit:
@@ -143,9 +143,11 @@ digitSpace resb 100
 digitSpacePos resb 8
 main_argc resw 4
 main_argv resw 10
-main_h resw 4
+main_cmd resw 5
+main_args resw 14
 setCursorPos_x resw 4
 setCursorPos_y resw 4
+putc_ch resw 4
 stderr_msg resw 4
 stderr_eno resw 4
 raise_msg resw 4
@@ -159,24 +161,17 @@ prompt_prmpt resw 4
 prompt_inp resw 4
 print_msg resw 4
 stdout_i_msg resw 4
-stdout_in_i resw 4
+println_msg resw 4
 exit_eno resw 4
 pwarn_err resw 4
 section .data
-<<<<<<< HEAD
-bs_str3: db 27,91, 0
-bs_str4: db 59, 0
-bs_str5: db 72, 0
-bs_str20: db 10, 0
-bs_str21: db 34,27,49,98,27,91,50,74,34, 0
-=======
-bs_str0: db 116,101,115,116, 0
-bs_str1: db 27,91, 0
-bs_str2: db 59, 0
-bs_str3: db 72, 0
-bs_str18: db 10, 0
-bs_str19: db 34,27,49,98,27,91,50,74,34, 0
-bs_str20: db 34,112,111,115,105,120,34, 0
->>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
+bs_str0: db 101,99,104,111, 0
+bs_str1: db 72,101,108,108,111,44,32,87,111,114,108,100,33, 0
+bs_str2: db 27,91, 0
+bs_str3: db 59, 0
+bs_str4: db 72, 0
+bs_str19: db 10, 0
+bs_str20: db 34,27,49,98,27,91,50,74,34, 0
+bs_str21: db 34,112,111,115,105,120,34, 0
 stdinBuffSize dq 1024
 warno dq 0

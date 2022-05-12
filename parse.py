@@ -295,24 +295,22 @@ class parser:
             ## split line by operators (+,-,*,/,=,==,!=,>,<,>=,<=)
             elif any(op in line for op in BS_MATH_OPERS) and not any(op in line for op in GENERAL_OPERATORS):
                 nums, ops = self.parseMath(line)
-                nums = [num.strip() for num in nums]
-                ops = [op.strip() for op in ops]
                 current = line_no
-                setTo = "| " + nums[0] if "|" in line else nums[0]
-                if len(ops) == 1:
-                    self.combined_data[current] = f"{setTo} {ops[0]} {nums[1]}"
-                    line_no += 1
-                    continue
-
+                setTo = ''
                 for i in range(0, len(nums)):
-                    if i >= len(ops):
+                    if i == len(ops):
                         break
-                    b = nums[i+1]
+                    a, b = nums[i], nums[i+1]
+                    a, b = a.strip(), b.strip()
+                    if ops[i] == "=":
+                        setTo = a
+                    if a.isnumeric():
+                        a = setTo if setTo != '' else a
 
                     if current == line_no:
-                        self.combined_data[current] = f"{setTo} {ops[i]} {b}"
+                        self.combined_data[current] = f"{a} {ops[i]} {b}".strip()
                     else:
-                        self.combined_data.insert(current, f"{setTo} {ops[i]} {b}")
+                        self.combined_data.insert(current, f"{a} {ops[i]} {b}".strip())
                     current += 1
                 line_no = current - 1
             
@@ -407,11 +405,7 @@ class parser:
                 self.globalVariables[varName] = [self.setType(dType), value]
                 lineNo += 1
                 continue
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
             #assert blockName not in self.blocks, f"Block {blockName} already exists! {lineNo}"
             next_end = self.combined_data[lineNo:].index("end" if not useSquiggly else "}")
             retType = self.setType(retType.strip()) 

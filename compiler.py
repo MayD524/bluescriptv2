@@ -419,7 +419,6 @@ class compiler:
                                     self.package[ext][varName][3] = size
                                     token_no += incToken
                                     continue
-                            
                             else:
                                 if size != -1:
                                     if f"{name}_{size}" in self.package["variables"]:
@@ -627,14 +626,8 @@ class compiler:
                 rType = functionData["retType"]
 
                 if needReturnValue:
-<<<<<<< HEAD
-
-                    if "&" in rType and rType in self.package["structs"]:
-                        regIndex = 0
-=======
                     self.compiledASM[".text"].append(f"mov [{returnVarName}], rax")
                     if "&" in rType and rType in self.package["structs"]:
->>>>>>> 0ec40a4edd9181816edc33e27e5ba2853e8d7d83
                         ## assign the struct values
                         rType = rType.replace("&", "")
                         struct = self.package["structs"][rType]
@@ -647,9 +640,7 @@ class compiler:
                                     sname, size = sname.split(" ")
                                     
                                 self.compiledASM[".bss"].append(f".{sname} resw {size}")
-                                self.compiledASM[".text"].append(f"mov [{returnVarName}.{sname}], {REGISTERS[regIndex]}")
                                 self.package[ext][f"{returnVarName}.{sname}"] = [typ, "struct_value", True, size]
-                            regIndex += 1
                     self.package[ext][returnVarName][0] = 'int' if rType in self.package["structs"] else rType
                     needReturnValue = False
                     returnVarName   = ""
@@ -727,11 +718,9 @@ class compiler:
                             
                         if self.isVariable(cmp2):
                             cmp2 = f"[{cmp2}]"
-                            
                         elif self.typeOf(cmp2) == "str":
                             strName = self.allocStr(cmp2)
                             cmp2 = f"[{strName}]"
-
                         elif line[token_no+nextArgs+1] == "BS_FUNCTION_TOKEN":
                             ## func call
                             for x in range(len(line)):
