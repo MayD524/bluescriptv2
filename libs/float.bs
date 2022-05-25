@@ -1,9 +1,17 @@
-struct float_t 
-    int whole
-    int decimal
+#include libs/list.bs
+
+const int whole = 0
+const int decimal = 1
+
+block newFloat int int -> ptr
+    whl dec
+    new = List 2
+    li_insert new 0 whole
+    li_insert new 0 dec
+    return new
 end
 
-block fimul *float_t int -> float_t
+block fimul ptr int -> ptr
     pr val
     decimal = pr.decimal
     decimal * 10
@@ -37,9 +45,10 @@ block fisub *float_t int -> float_t
     return pr
 end
 
-block stdout_f *float_t -> void
+block stdout_f ptr -> void
     pr
-    stdout_i pr.whole
+    
+    stdout_i li_get pr 0
     stdout "."
-    stdout_i pr.decimal
+    stdout_i li_get pr 1
 end

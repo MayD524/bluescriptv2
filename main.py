@@ -1,3 +1,4 @@
+import llvm_compiler
 import compiler
 import parse
 import sys
@@ -13,7 +14,7 @@ def bs_main(fileName:str, output:str) -> None:
     ps.structFind()
     ps.pre_parse()
     ps.blockify()
-    cs = compiler.compiler(ps.package(),output)
+    cs = llvm_compiler.llvm_compiler(ps.package(),output)
     cs.compile()
 
 if __name__ == "__main__":

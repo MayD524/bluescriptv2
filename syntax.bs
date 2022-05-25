@@ -1,10 +1,4 @@
-#include libs/stdlib.bs
-#include libs/posix.bs
 
 block main -> int
-    cmd = "echo"
-    args = "Hello, World!"
-    print cmd
-    putc 32
-    println args
+    x = "hello world!"
 end
