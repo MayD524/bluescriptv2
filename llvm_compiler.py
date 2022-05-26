@@ -24,6 +24,7 @@ class llvm_compiler:
         self.package["variables"]["main_argc"] = ["int", "argc", True, -1]
         self.package["variables"]["main_argv"] = ["int", "argv", True, -1]
         
+        self.globalDecl:str = ""
         self.compiled_code:str = ""
         
         
@@ -35,21 +36,23 @@ class llvm_compiler:
         
         self.totalMemory = 0
         
+        self.bsTypeToLLVM = {
+            "int": "i32",
+            "float": "double",
+            "str": "i8*",
+            "void": "void",
+            "bool": "i1",
+            "struct": "i8*"
+        }
+
     def bsTypeToLLVM(self, bsType):
-        if bsType == "int":
-            return "i32"
-        elif bsType == "float":
-            return "double"
-        elif bsType == "string":
-            return "i8*"
-        elif bsType == "void":
-            return "void"
-        elif bsType == "bool":
-            return "i1"
-        elif bsType == "struct":
-            return "i8*"
-        else:
-            return "i8*"
+        return self.bsTypeToLLVM[bsType] if bsType in self.bsTypeToLLVM else "i8*"
+    
+    def LLVMToBsType(self, llvmType):
+        for bsType in self.bsTypeToLLVM:
+            if self.bsTypeToLLVM[bsType] == llvmType:
+                return bsType
+        return False
         
     def getExt(self, varname:str) -> str|bool:
         if varname in self.package["variables"]:
@@ -97,8 +100,11 @@ class llvm_compiler:
             
             if token == "BS_STRING_TOKEN_AHOY":
                 ## create a string constant
-                self.compiled_code += f"%str{self.global_token_id} = private unnamed_addr constant [{len(line[token_no+1])} x i8] c\"{line[token_no+1]}\"\n"
-        
+                self.global_token_id += 1
+                self.globalDecl += "@.str.%d private unnamed_addr constant [%d x i8] c\"%s\"\n" % (self.global_token_id, len(line[token_no+1]), line[token_no+1])
+                self.compiled_code += "call i8* @malloc(i32 %d)\n" % (len(line[token_no+1]) + 1)
+                self.compiled_code += "store i8* getelementptr inbounds ([%d x i8], [%d x i8]* @.str.%d, i32 0, i32 0), i8** %s\n" % (len(line[token_no+1]) + 1, len(line[token_no+1]) + 1, self.global_token_id, line[token_no+2])
+
             elif token == "BS_VARIABLE_TOKEN":
                 varName = line[token_no+1]
                 
@@ -132,7 +138,13 @@ class llvm_compiler:
                         
                     match mode:
                         case 12: ## assign
-                            if ext == "variables" or ext == "globals":
+                            if dType == "BS_STRING_TOKEN_AHOY":
+                                strPtr = "@.str" if self.global_token_id == 0 else "@.str.%d" % self.global_token_id
+                                self.compiled_code += "%%%s = getelementptr [%d x i8]* %s, i64 0, i64 0\n" % (varName, len(line[token_no+4]) + 1, strPtr)
+                                self.globalDecl += "%s = private unnamed_addr constant [%d x i8] c\"%s\\00\"\n" % (strPtr, len(line[token_no+4]) + 1, line[token_no+4])
+                                self.global_token_id += 1
+
+                            elif ext == "variables" or ext == "globals":
                                 self.compiled_code += f"%{varName} = alloca {self.bsTypeToLLVM(self.package[ext][varName][0])}\n"
                                 self.compiled_code += f"store {self.bsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.bsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
                         case 10: ## add
@@ -173,8 +185,21 @@ class llvm_compiler:
                         self.compiled_code += f"%cond{self.cond_id} = icmp eq i32 0, {line[token_no+1]}\n"
             
             token_no += 1
+
+    def handleImports(self) -> None:
+        for imported in self.package["includedFiles"]:
+            if not imported.endswith(".ll"):
+                continue 
+            with open(imported, "r") as reader:
+                self.compiled_code += reader.read()
+
+    def handleExterns(self) -> None:
+        for extern in self.package["externs"]:
+            self.compiled_code += f"declare {extern}\n"
     def compile(self):
-        
+        self.handleImports()
+        self.handleExterns()
+
         for block in self.package["blocks"]:
             self.currentFunction = block
             hasReturned = False
@@ -230,6 +255,9 @@ class llvm_compiler:
         print("----                Done Compiling               ----")
         print("-----------------------------------------------------")
         
+
+        self.compiled_code = self.globalDecl + self.compiled_code
+
         with open(self.output, "w+") as f:
             f.write(self.compiled_code)
             

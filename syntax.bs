@@ -1,4 +1,6 @@
+#extern i32 puts(i8* nocapture) nounwind
 
 block main -> int
     x = "hello world!"
+    puts x
 end
