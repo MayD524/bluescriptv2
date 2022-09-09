@@ -1,3 +1,4 @@
+from c_compiler import c_compiler
 import llvm_compiler
 import compiler
 import parse
@@ -10,11 +11,21 @@ __os_name__ = "Windows" if os.name == "nt" else "Linux"
 def bs_main(fileName:str, output:str) -> None:
     with open(fileName, "r") as f:
         data = f.readlines()
+    compiler_type = data[0].strip()
+    data = data[1:]
     ps = parse.parser(fileName, data, [fileName])
     ps.structFind()
     ps.pre_parse()
     ps.blockify()
-    cs = llvm_compiler.llvm_compiler(ps.package(),output)
+
+    if compiler_type == "#use llvm":
+        cs = llvm_compiler.llvm_compiler(ps.package(),output)
+    elif compiler_type == "#use ez180":
+        pass
+    elif compiler_type == "#use c":
+        cs = c_compiler(ps.package(), output)
+    else:
+        cs = compiler.compiler(ps.package(), output)
     cs.compile()
 
 if __name__ == "__main__":

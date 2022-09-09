@@ -45,7 +45,7 @@ class llvm_compiler:
             "struct": "i8*"
         }
 
-    def bsTypeToLLVM(self, bsType):
+    def fbsTypeToLLVM(self, bsType):
         return self.bsTypeToLLVM[bsType] if bsType in self.bsTypeToLLVM else "i8*"
     
     def LLVMToBsType(self, llvmType):
@@ -69,7 +69,7 @@ class llvm_compiler:
         
     def compileLine(self, block, line):
         expectedIndent = len(self.logicEndLabel) - 1 if len(self.logicEndLabel) > 0 else 0
-        
+
         check = set(line)
         if check == {13}:
             return False
@@ -110,7 +110,7 @@ class llvm_compiler:
                 
                 ext = self.getExt(varName)
                 if not ext: raise Exception(f"Variable {varName} not found")
-                
+                inc = 1
                 if len(line) > token_no+2:
                     assert len(line) != token_no+3, f"line {block}:{self.currentLineNo} has no value for variable {varName}, {line}"
                     inc = 3
@@ -145,19 +145,19 @@ class llvm_compiler:
                                 self.global_token_id += 1
 
                             elif ext == "variables" or ext == "globals":
-                                self.compiled_code += f"%{varName} = alloca {self.bsTypeToLLVM(self.package[ext][varName][0])}\n"
-                                self.compiled_code += f"store {self.bsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.bsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
+                                self.compiled_code += f"%{varName} = alloca {self.fbsTypeToLLVM(self.package[ext][varName][0])}\n"
+                                self.compiled_code += f"store {self.fbsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.fbsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
                         case 10: ## add
-                            self.compiled_code += f"%{varName} = add {self.bsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.bsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
+                            self.compiled_code += f"%{varName} = add {self.fbsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.fbsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
                             
                         case 9: ## sub
-                            self.compiled_code += f"%{varName} = sub {self.bsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.bsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
+                            self.compiled_code += f"%{varName} = sub {self.fbsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.fbsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
                         
                         case 8: ## mul
-                            self.compiled_code += f"%{varName} = mul {self.bsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.bsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
+                            self.compiled_code += f"%{varName} = mul {self.fbsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.fbsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
                         
                         case 11: ## div
-                            self.compiled_code += f"%{varName} = sdiv {self.bsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.bsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
+                            self.compiled_code += f"%{varName} = sdiv {self.fbsTypeToLLVM(self.package[ext][varName][0])} {value}, {self.fbsTypeToLLVM(self.package[ext][varName][0])} %{varName}\n"
                         
                 token_no += inc
     
@@ -168,14 +168,14 @@ class llvm_compiler:
                 
                 assert nextFun in self.package["live_blocks"], f"{block}:{self.currentLineNo} >> Function {nextFun} not found"
 
-                self.compiled_code += f"%{nextFun} = call {self.bsTypeToLLVM(self.package['blocks'][nextFun]['retType'])} @{nextFun}("
+                self.compiled_code += f"%{nextFun} = call {self.fbsTypeToLLVM(self.package['blocks'][nextFun]['retType'])} @{nextFun}("
                 for i in range(loc_argc):
-                    self.compiled_code += f"{self.bsTypeToLLVM(self.package['blocks'][nextFun]['args'][i][0])} %{loc_args[i]}"
+                    self.compiled_code += f"{self.fbsTypeToLLVM(self.package['blocks'][nextFun]['args'][i][0])} %{loc_args[i]}"
                     if i != loc_argc-1:
                         self.compiled_code += ", "
                 self.compiled_code += ")\n"
                 if needReturnValue:
-                    self.compiled_code += f"%{returnVarName} = load {self.bsTypeToLLVM(self.package['blocks'][nextFun]['retType'])}, {self.bsTypeToLLVM(self.package['blocks'][nextFun]['retType'])} %{nextFun}\n"
+                    self.compiled_code += f"%{returnVarName} = load {self.fbsTypeToLLVM(self.package['blocks'][nextFun]['retType'])}, {self.fbsTypeToLLVM(self.package['blocks'][nextFun]['retType'])} %{nextFun}\n"
                 token_no += 1
                 
             elif isinstance(token, int):
@@ -196,7 +196,9 @@ class llvm_compiler:
     def handleExterns(self) -> None:
         for extern in self.package["externs"]:
             self.compiled_code += f"declare {extern}\n"
+    
     def compile(self):
+        pprint(self.package)
         self.handleImports()
         self.handleExterns()
 
@@ -205,7 +207,7 @@ class llvm_compiler:
             hasReturned = False
             requireReturn = False if self.package["blocks"][block]["retType"] == "void" else True
         
-            self.compiled_code += f"define {self.bsTypeToLLVM(self.package['blocks'][block]['retType'])} @{block}("
+            self.compiled_code += f"define {self.fbsTypeToLLVM(self.package['blocks'][block]['retType'])} @{block}("
             
             if block == "main":
                 self.compiled_code += "i32 %argc, i8** %argv"
@@ -222,7 +224,7 @@ class llvm_compiler:
                     exit(1)
                     
                 for i in range(len(args)):
-                    self.compiled_code += f"{self.bsTypeToLLVM(self.package['blocks'][block]['args'][i])} %arg{args[i]}"
+                    self.compiled_code += f"{self.fbsTypeToLLVM(self.package['blocks'][block]['args'][i])} %arg{args[i]}"
                     
             self.compiled_code += ") {\n"
             for line_no, line in enumerate(self.package["blocks"][block]["tokens"]):
@@ -255,9 +257,11 @@ class llvm_compiler:
         print("----                Done Compiling               ----")
         print("-----------------------------------------------------")
         
+        print("lli -opaque-pointers %s" % self.output)
 
         self.compiled_code = self.globalDecl + self.compiled_code
 
+        self.compiled_code += "!0 = !{i32 42, null, !\"string\"}\n!foo = !{!0}"
         with open(self.output, "w+") as f:
             f.write(self.compiled_code)
             

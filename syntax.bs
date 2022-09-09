@@ -1,6 +1,8 @@
-#extern i32 puts(i8* nocapture) nounwind
+#use llvm
+#use stdlib.ll
+#extern @puts
 
 block main -> int
-    x = "hello world!"
-    puts x
+    x = "hello world"
+    @puts x
 end

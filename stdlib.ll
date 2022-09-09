@@ -1,1 +1,2 @@
-declare i32 @puts(i8* nocapture) nounwind                            
+declare i32 @puts(ptr nocapture) nounwind                            
+

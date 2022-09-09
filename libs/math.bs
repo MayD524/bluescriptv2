@@ -47,3 +47,19 @@ block gcd int int -> int
         | goto gcdTop
     return x
 end
+
+block max ptr -> int
+    li
+    ## take a list and return
+    ## the greatest
+    sz = li_size li
+    cur = 0
+    greatest = li_get li 0
+    do
+        c = li_get li cur
+        if greatest < c
+        | greatest = c
+        cur + 1
+    while cur < sz
+    return greatest
+end

@@ -1,3 +1,4 @@
+import os
 from pprint import pprint
 
 DEBUG = False
@@ -152,6 +153,9 @@ class parser:
                 self.included_files.append(filename)
 
                 ## get the function names
+                if not os.path.exists(filename):
+                    ## assume stdlib 
+                    continue
                 functionNames = open(filename, "r").readlines()
                 
                 for line in functionNames:

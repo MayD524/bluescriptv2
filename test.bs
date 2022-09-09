@@ -1,0 +1,6 @@
+#include libs/stdlib.bs
+
+block main -> int
+    println "hello world"
+    return 3
+end
